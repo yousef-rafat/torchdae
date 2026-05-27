@@ -1,10 +1,11 @@
 import math
 import torch
-from functools import partial
 from algorithms import solve_consistent_yp0
-from typing import Callable, Optional, Tuple, List
-from common import batched_newton_solve, StatefulJacobian, try_compile, DAESolution
-from util import validate_residual_function, check_initial_condition_violation, handle_step_events
+from typing import Callable, Optional, Tuple, List, Union
+from util import handle_step_events
+from common import (
+    batched_newton_solve, StatefulJacobian, try_compile, DAESolution, DAEFunctions, resolve_dae_components, prepare_solver_inputs
+)
 
 __all__ = [
     "solve_bdf1",
@@ -32,23 +33,6 @@ def apply_event_reset(
     yp_reset = solve_consistent_yp0(F, t_val, y_reset, yp_evt, tol=ic_tol)
     
     return t_val, y_reset, yp_reset
-
-def prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict):
-    """Internal helper to validate, compute step size, and handle yp0."""
-    t0, t1 = t_span
-    yp_guess = yp0 if yp0 is not None else torch.zeros_like(y0)
-
-    validate_residual_function(F, t0, y0, yp_guess)
-    check_initial_condition_violation(F, t0, y0, yp_guess, tol=ic_tol, strict=strict, index=1)
-
-    if h is None and n_steps is None:
-        raise ValueError("Provide h or n_steps")
-    if h is None:
-        h = (t1 - t0) / n_steps
-    if n_steps is None:
-        n_steps = int(math.ceil((t1 - t0) / h))
-        
-    return h, n_steps, yp_guess
 
 def bdf1_step(
     F: Callable, t: float, h: float, y_prev: torch.Tensor,
@@ -225,8 +209,7 @@ def solve_bdf1(
         ys: (n_steps+1, *y0.shape) trajectory
         ts: (n_steps+1,) times
     """
-    if args is not None:
-        F = partial(F, *args)
+    F, constraint_fn, projection_fn, event_fn, reset_fn = resolve_dae_components(F, args, step_tol)
     
     t0, t1 = t_span
     h, n_steps, yp_guess = prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict)
@@ -250,6 +233,9 @@ def solve_bdf1(
             F, t_next, h_actual, y_prev, tol=step_tol, damping=damping, strategy=strategy, recompute_every=recompute_every
         )
         yp_next = (y_next - y_prev) / h_actual
+
+        if projection_fn is not None:
+            y_next = projection_fn(y_next)
         
         # checks for overshoots and corrects them
         if event_fn is not None:
@@ -289,13 +275,11 @@ def solve_bdf1(
     )
 
 def solve_bdf2(
-    F: Callable,
+    F: Union[Callable, DAEFunctions],
     t_span: Tuple[float, float],
     y0: torch.Tensor,
     args: Optional[Tuple] = None,
     yp0: Optional[torch.Tensor] = None,
-    event_fn: Callable = None,
-    reset_fn: Callable = None,
     h: Optional[float] = None,
     n_steps: Optional[int] = None,
     ic_tol: float = 1e-8,
@@ -309,8 +293,7 @@ def solve_bdf2(
     """
     BDF2 solver. Bootstraps with one BDF1 step, then switches to BDF2.
     """
-    if args is not None:
-        F = partial(F, *args)
+    F, constraint_fn, projection_fn, event_fn, reset_fn = resolve_dae_components(F, args, step_tol)
 
     t0, t1 = t_span
     h, n_steps, yp_guess = prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict)
@@ -344,7 +327,10 @@ def solve_bdf2(
                 F, t_next, h_actual, y_prev, ys[-2], tol=step_tol, damping=damping, strategy=strategy, recompute_every=recompute_every
             )
             yp_next = (3.0 * y_next - 4.0 * y_prev + ys[-2]) / (2.0 * h_actual)
-        
+
+        if projection_fn is not None:
+            y_next = projection_fn(y_next)
+
         # checks for overshoots and corrects them
         if event_fn is not None:
             t_evt, y_evt, yp_evt, evt_mask = handle_step_events(
@@ -358,7 +344,7 @@ def solve_bdf2(
                 y_event = y_evt
 
                 t, y_prev, yp_prev = apply_event_reset(F, t_evt, y_evt, yp_evt, ys, ts, reset_fn, ic_tol=ic_tol)
-                
+
                 if reset_fn is None:
                     break
                 else:
@@ -388,8 +374,6 @@ def solve_tr_bdf2(
     y0: torch.Tensor,
     args: Optional[Tuple] = None,
     yp0: Optional[torch.Tensor] = None,
-    event_fn: Callable = None,
-    reset_fn: Callable = None,
     h: Optional[float] = None,
     n_steps: Optional[int] = None,
     ic_tol: float = 1e-8,
@@ -404,8 +388,7 @@ def solve_tr_bdf2(
     """
     Singly Diagonally Implicit Runge-Kutta TR-BDF2 solver.
     """
-    if args is not None:
-        F = partial(F, *args)
+    F, constraint_fn, projection_fn, event_fn, reset_fn = resolve_dae_components(F, args, step_tol)
 
     t0, t1 = t_span
     h, n_steps, yp_guess = prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict)
@@ -434,6 +417,10 @@ def solve_tr_bdf2(
             F, t, h_actual, y_prev, yp_prev, 
             tol=step_tol, damping=damping, strategy=strategy, recompute_every=recompute_every
         )
+
+        if projection_fn is not None:
+            y_next = projection_fn(y_next)
+
         
         # checks for overshoots and corrects them
         if event_fn is not None:

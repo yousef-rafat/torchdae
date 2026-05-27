@@ -1,10 +1,23 @@
+import math
 import torch
-import torch.func as func
-from typing import Callable, Optional
+import logging
 import warnings
+import torch.func as func
+from functools import partial
 from dataclasses import dataclass
+from projections import coordinate_projection
+from typing import Callable, Optional,  Tuple, Union
+from util import validate_residual_function, check_initial_condition_violation
 
-__all__ = ["DAESolution"]
+__all__ = ["DAESolution", "DAEFunctions"]
+
+@dataclass
+class DAEFunctions:
+    F: Callable
+    event_fn: Optional[Callable] = None
+    reset_fn: Optional[Callable] = None
+    constraint_fn: Optional[Callable] = None
+    projection_fn: Optional[Callable] = coordinate_projection
 
 @dataclass(frozen=True)
 class DAESolution:
@@ -28,6 +41,52 @@ def _flat(x: torch.Tensor) -> torch.Tensor:
 
 def _shape(x_flat: torch.Tensor, template: torch.Tensor) -> torch.Tensor:
     return x_flat.reshape(template.shape)
+
+
+def prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict, index=1):
+    """Internal helper to validate, compute step size, and handle yp0."""
+    t0, t1 = t_span
+    yp_guess = yp0 if yp0 is not None else torch.zeros_like(y0)
+
+    validate_residual_function(F, t0, y0, yp_guess)
+    check_initial_condition_violation(F, t0, y0, yp_guess, tol=ic_tol, strict=strict, index=index)
+
+    if h is None and n_steps is None:
+        raise ValueError("Provide h or n_steps")
+    if h is None:
+        h = (t1 - t0) / n_steps
+    if n_steps is None:
+        n_steps = int(math.ceil((t1 - t0) / h))
+        
+    return h, n_steps, yp_guess
+
+def resolve_dae_components(
+    F_or_system: Union[Callable, DAEFunctions],
+    args: Optional[Tuple],
+    step_tol: float
+) -> Tuple[Callable, Optional[Callable], Optional[Callable], Optional[Callable], Optional[Callable]]:
+    if isinstance(F_or_system, DAEFunctions):
+        F = F_or_system.F
+        event_fn = getattr(F_or_system, "event_fn", None)
+        reset_fn = getattr(F_or_system, "reset_fn", None)
+        constraint_fn = getattr(F_or_system, "constrain_fn", None)
+        projection_fn = getattr(F_or_system, "projection_fn", None)
+    else:
+        F = F_or_system
+        constraint_fn = None
+        projection_fn = None
+        event_fn = None
+        reset_fn = None
+
+    if constraint_fn is not None and projection_fn is None:
+        logging.info("No projection function specified, defaulting to coordinate_projector")
+        from projections import make_coordinate_projector
+        projection_fn = make_coordinate_projector(constraint_fn, tol=step_tol)
+
+    if args is not None:
+        F = partial(F, *args)
+
+    return F, constraint_fn, projection_fn, event_fn, reset_fn
 
 
 def try_compile(fn: Callable, fullgraph=False, dynamic=True, **compile_kwargs) -> Callable:
