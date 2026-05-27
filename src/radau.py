@@ -6,7 +6,9 @@ from bdf import apply_event_reset
 from util import handle_step_events
 from algorithms import solve_consistent_yp0
 from typing import Callable, Optional, Tuple, List
-from common import batched_newton_solve, StatefulJacobian, try_compile, DAESolution, prepare_solver_inputs
+from common import (
+    batched_newton_solve, StatefulJacobian, try_compile, DAESolution, prepare_solver_inputs, resolve_dae_components
+)
 
 __all__ = ["solve_radau_iia5"]
 
@@ -111,15 +113,13 @@ def solve_radau_iia5(
     compiles_step: bool = False,
     strategy: str = "freeze_dynamic", 
     recompute_every: Optional[int] = None,
-    event_fn: Callable = None,
-    reset_fn: Callable = None,
     max_iter_for_events = 100
 ) -> DAESolution:
     """
     3-stage, 5th-order fully Implicit Runge-Kutta Radau IIA solver.
     """
-    if args is not None:
-        F = partial(F, *args)
+    
+    F, constraint_fn, projection_fn, event_fn, reset_fn = resolve_dae_components(F, args, step_tol)
 
     t0, t1 = t_span
     h, n_steps, yp_guess = prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict)
@@ -148,6 +148,9 @@ def solve_radau_iia5(
             F, t, h_actual, y_prev, 
             tol=step_tol, damping=damping, strategy=strategy, recompute_every=recompute_every
         )
+
+        if projection_fn is not None:
+            y_next = projection_fn(y_next)
         
         # checks for overshoots and corrects them
         if event_fn is not None:

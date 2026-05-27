@@ -293,6 +293,7 @@ def solve_bdf2(
     """
     BDF2 solver. Bootstraps with one BDF1 step, then switches to BDF2.
     """
+    # constraint_fn could have some diagnostics benefits
     F, constraint_fn, projection_fn, event_fn, reset_fn = resolve_dae_components(F, args, step_tol)
 
     t0, t1 = t_span
