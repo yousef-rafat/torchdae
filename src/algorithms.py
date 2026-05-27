@@ -106,12 +106,12 @@ def compute_consistent_initial_conditions(
 
         # Newton coordinate projection loop
         for proj_iter in range(15):
-            g_val = g_batched(y_flat)  # Shape: (B, C)
+            g_val = g_batched(y_flat)
             g_norm = torch.linalg.vector_norm(g_val, dim=-1)
             if g_norm.max() < tol:
                 break
                 
-            J_g = g_jacobian(y_flat)  # Shape: (B, C, N)
+            J_g = g_jacobian(y_flat)
             
             # Solve minimum-norm least-squares update step:
             # (J_g @ J_g^T) w = -g_val
@@ -129,7 +129,7 @@ def compute_consistent_initial_conditions(
     else:
         y0_consistent = y0.clone()
         
-    # 3. Solve for consistent initial derivatives yp0 given the consistent y0.
+    # given y0, solve for yp0
     yp_flat = yp_guess.flatten(start_dim=1).clone()
     y0_cons_flat = y0_consistent.flatten(start_dim=1)
     

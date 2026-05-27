@@ -12,6 +12,27 @@ __all__ = [
     "solve_tr_bdf2"
 ]
 
+def apply_event_reset(
+    F: Callable, t_evt: torch.Tensor, y_evt: torch.Tensor,
+    yp_evt: torch.Tensor, ys: List[torch.Tensor], ts: List[float], 
+    reset_fn: Optional[Callable], ic_tol: float,
+) -> Tuple[float, torch.Tensor, torch.Tensor]:
+    ys.append(y_evt)
+    
+    t_val = t_evt.item() if t_evt.dim() == 0 else t_evt[0].item()
+    ts.append(t_val)
+    
+    if reset_fn is None:
+        return t_val, y_evt, yp_evt
+        
+    y_reset = reset_fn(t_evt, y_evt)
+    ys.append(y_reset)
+    ts.append(t_val)
+    
+    yp_reset = solve_consistent_yp0(F, t_val, y_reset, yp_evt, tol=ic_tol)
+    
+    return t_val, y_reset, yp_reset
+
 def prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict):
     """Internal helper to validate, compute step size, and handle yp0."""
     t0, t1 = t_span
@@ -242,23 +263,11 @@ def solve_bdf1(
                 t_event = t_evt
                 y_event = y_evt
 
-                # record the exact boundary state
-                ys.append(y_event)
-                # handles batched and unbatched
-                ts.append(t_event.item() if t_event.dim() == 0 else t_event[0].item())
+                t, y_prev, yp_prev = apply_event_reset(F, t_evt, y_evt, yp_evt, ys, ts, reset_fn, ic_tol=ic_tol)
                 
                 if reset_fn is None:
                     break
                 else:
-                    # calls restart function and restart the simulation
-                    y_reset = reset_fn(t_event, y_event)
-                    ys.append(y_reset)
-                    ts.append(t_event.item() if t_event.dim() == 0 else t_event[0].item())
-                    
-                    t = t_event.item() if t_event.dim() == 0 else t_event[0].item()
-                    y_prev = y_reset
-                    
-                    yp_prev = solve_consistent_yp0(F, t, y_prev, yp_evt, tol=ic_tol)
                     continue
 
         ys.append(y_next)
@@ -348,24 +357,11 @@ def solve_bdf2(
                 t_event = t_evt
                 y_event = y_evt
 
-                # record the exact boundary state
-                ys.append(y_event)
-                # handles batched and unbatched
-                ts.append(t_event.item() if t_event.dim() == 0 else t_event[0].item())
+                t, y_prev, yp_prev = apply_event_reset(F, t_evt, y_evt, yp_evt, ys, ts, reset_fn, ic_tol=ic_tol)
                 
                 if reset_fn is None:
                     break
                 else:
-                    # calls restart function and restart the simulation
-                    y_reset = reset_fn(t_event, y_event)
-                    ys.append(y_reset)
-                    ts.append(t_event.item() if t_event.dim() == 0 else t_event[0].item())
-                    
-                    t = t_event.item() if t_event.dim() == 0 else t_event[0].item()
-                    y_prev = y_reset
-                    
-                    yp_prev = solve_consistent_yp0(F, t, y_prev, yp_evt, tol=ic_tol)
-                    needs_bootstrap = True
                     continue
 
         ys.append(y_next)
@@ -451,23 +447,11 @@ def solve_tr_bdf2(
                 t_event = t_evt
                 y_event = y_evt
 
-                # record the exact boundary state
-                ys.append(y_event)
-                # handles batched and unbatched
-                ts.append(t_event.item() if t_event.dim() == 0 else t_event[0].item())
+                t, y_prev, yp_prev = apply_event_reset(F, t_evt, y_evt, yp_evt, ys, ts, reset_fn, ic_tol=ic_tol)
                 
                 if reset_fn is None:
                     break
                 else:
-                    # calls restart function and restart the simulation
-                    y_reset = reset_fn(t_event, y_event)
-                    ys.append(y_reset)
-                    ts.append(t_event.item() if t_event.dim() == 0 else t_event[0].item())
-                    
-                    t = t_event.item() if t_event.dim() == 0 else t_event[0].item()
-                    y_prev = y_reset
-                    
-                    yp_prev = solve_consistent_yp0(F, t, y_prev, yp_evt, tol=ic_tol)
                     continue
 
         ys.append(y_next)
