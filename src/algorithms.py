@@ -3,7 +3,7 @@ from typing import Callable, Optional, Tuple
 from common import batched_newton_solve, StatefulJacobian
 import torch.func as func
 
-__all__ = ["solve_consistent_yp0", "compute_consistent_initial_conditions"]
+__all__ = ["compute_consistent_initial_conditions"]
 
 def solve_consistent_yp0(
     F: Callable,
