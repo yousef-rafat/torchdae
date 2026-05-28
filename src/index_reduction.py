@@ -320,7 +320,7 @@ def simplify_dae(
     t0: float,
     y0: torch.Tensor,
     yp0: torch.Tensor,
-    algorithm: str = "dummy_derivative",
+    algorithm: str = "differentiation",
     alpha: float = 10.0,
 ) -> Callable[[float, torch.Tensor, torch.Tensor], torch.Tensor]:
 
