@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from typing import Callable, List, Set, Tuple, Dict
 
 __all__ = [
-    "DAEStructure", "pantelides_reduction", "dummy_derivative_reduction", "analyze_pytorch_dae", "IndexReducedDAE", "simplify_dae", "dummy_derivative_reduction"
+    "DAEStructure", "pantelides_reduction", "dummy_derivative_reduction", "analyze_pytorch_dae",
+    "IndexReducedDAE", "simplify_dae", "dummy_derivative_reduction", "DummyDerivativeDAE"
 ]
 
 
@@ -29,6 +30,7 @@ class DAEStructure:
     differentiation_orders: List[int]            # Number of differentiations required per equation to reach Index-1
     is_structurally_singular: bool               # True if no perfect bipartite matching exists over state appearances
     reduction_algorithm: str                     # Name of the algorithm used for index reduction analysis
+    dummy_derivatives: List[int] = None          # Indices of variables selected as dummy derivatives
 
 def dfs(eq_idx: int, visited: Set[int], equations, matching):
     for var_idx, _ in equations[eq_idx]:
@@ -118,7 +120,7 @@ def dummy_derivative_reduction(
 
 
 REDUCTION_ALGORITHMS = {
-    "pantelides": pantelides_reduction,
+    "differentiation": lambda eqs: (pantelides_reduction(eqs), []),
     "dummy_derivative": dummy_derivative_reduction,
 }
 
@@ -137,7 +139,7 @@ def analyze_pytorch_dae(
     t0: float,
     y0: torch.Tensor,
     yp0: torch.Tensor,
-    algorithm: str = "pantelides"
+    algorithm: str = "dummy_derivative"
 ) -> DAEStructure:
     """
     Performs structural analysis on a DAE system.
@@ -201,7 +203,7 @@ def analyze_pytorch_dae(
             algebraic_vars.append(j)
             
     reduction_fn = REDUCTION_ALGORITHMS[algo_key]
-    differentiation_orders = reduction_fn(equations)
+    differentiation_orders, dummy_vars = reduction_fn(equations)
     is_singular = not _has_perfect_matching(equations, n_vars)
     
     return DAEStructure(
@@ -213,7 +215,8 @@ def analyze_pytorch_dae(
         unassigned_equations=unassigned_eqs,
         differentiation_orders=differentiation_orders,
         is_structurally_singular=is_singular,
-        reduction_algorithm=algo_key
+        reduction_algorithm=algo_key,
+        dummy_derivatives=dummy_vars
     )
 
 class IndexReducedDAE:
@@ -262,12 +265,62 @@ class IndexReducedDAE:
                 
         return r_new
 
+class DummyDerivativeDAE:
+    """
+    A PyTorch-native wrapper that implements the Mattsson-Söderlind 
+    Dummy Derivative method. It augments the DAE system with dummy 
+    derivatives to reduce a high-index DAE to a stable Index-1 DAE.
+    """
+    def __init__(self, F: Callable, structure: DAEStructure):
+        self.F = F
+        self.n_vars = structure.n_vars
+        self.differentiation_orders = structure.differentiation_orders
+        self.dummy_derivatives = structure.dummy_derivatives
+        self.high_index_eqs = [i for i, order in enumerate(self.differentiation_orders) if order > 0]
+        self.K = len(self.dummy_derivatives)
+
+    def __call__(self, t: float, Z: torch.Tensor, Zp: torch.Tensor) -> torch.Tensor:
+        # extract the y, yp, and u
+        y = Z[..., :self.n_vars]
+        yp_dynamic = Zp[..., :self.n_vars]
+        u = Z[..., self.n_vars:]
+        
+        # swap values in yp with algebric constants (dummy derivatives)
+        yp_bar = yp_dynamic.clone()
+        for idx, dummy_idx in enumerate(self.dummy_derivatives):
+            yp_bar[..., dummy_idx] = u[..., idx]
+            
+        # N original equation
+        r_orig = self.F(t, y, yp_bar)
+        
+        # K equation
+        t_tensor = torch.tensor(t, dtype=y.dtype, device=y.device, requires_grad=True)
+        t_tangent = torch.ones_like(t_tensor)
+        
+        _, dF_dt = func.jvp(
+            lambda t_val, y_val: self.F(t_val, y_val, yp_bar),
+            (t_tensor, y),
+            (t_tangent, yp_bar)
+        )
+        
+        # residuals
+        r_diff = []
+        for idx in self.high_index_eqs:
+            r_diff.append(dF_dt[..., idx:idx+1])
+            
+        # N+K equations
+        if len(r_diff) > 0:
+            r_diff_tensor = torch.cat(r_diff, dim=-1)
+            return torch.cat([r_orig, r_diff_tensor], dim=-1)
+        else:
+            return r_orig
+
 def simplify_dae(
     F: Callable[[float, torch.Tensor, torch.Tensor], torch.Tensor],
     t0: float,
     y0: torch.Tensor,
     yp0: torch.Tensor,
-    algorithm: str = "pantelides",
+    algorithm: str = "dummy_derivative",
     alpha: float = 10.0,
 ) -> Callable[[float, torch.Tensor, torch.Tensor], torch.Tensor]:
 
@@ -277,4 +330,23 @@ def simplify_dae(
     if max(structure.differentiation_orders) == 0:
         return F
         
-    return IndexReducedDAE(F, structure, alpha=alpha, index = len(structure.differentiation_orders))
+    if structure.reduction_algorithm == "dummy_derivative":
+        F_reduced = DummyDerivativeDAE(F, structure)
+        
+        # build the augmented initial states (Z0, Zp0) of size N + K
+        y0_flat = y0.flatten(start_dim=1)
+        yp0_flat = yp0.flatten(start_dim=1)
+        
+        u0 = yp0_flat[..., structure.dummy_derivatives]
+        Z0_flat = torch.cat([y0_flat, u0], dim=-1)
+        Zp0_flat = torch.cat([yp0_flat, torch.zeros_like(u0)], dim=-1)
+        
+        # reshape to original
+        Z0 = Z0_flat.view(y0.shape[0], -1) if y0.dim() > 1 else Z0_flat.squeeze(0)
+        Zp0 = Zp0_flat.view(yp0.shape[0], -1) if yp0.dim() > 1 else Zp0_flat.squeeze(0)
+        
+        return F_reduced, Z0, Zp0
+        
+    else:
+        F_reduced = IndexReducedDAE(F, structure, alpha=alpha, index=max(structure.differentiation_orders) + 1)
+        return F_reduced, y0, yp0
