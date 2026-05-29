@@ -1,7 +1,8 @@
 import torch
-from typing import Callable, Optional, Tuple
-from common import batched_newton_solve, StatefulJacobian
 import torch.func as func
+from typing import Callable, Optional, Tuple
+from projections import coordinate_projection
+from common import batched_newton_solve, StatefulJacobian
 
 __all__ = ["compute_consistent_initial_conditions"]
 
@@ -63,6 +64,7 @@ def compute_consistent_initial_conditions(
     yp0_guess: Optional[torch.Tensor] = None,
     tol: float = 1e-8,
     max_iter: int = 50,
+    projection_iter = 15,
     damping: float = 1.0,
     index: int = 1,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -87,45 +89,13 @@ def compute_consistent_initial_conditions(
     row_norms = torch.linalg.vector_norm(J_yp, dim=1)
     algebraic_indices = torch.where(row_norms < 1e-12)[0]
     
-    y_flat = y0.flatten(start_dim=1).clone()
-    
-    # 2. Coordinate Projection: If the system is high-index, project y0
-    # onto the algebraic manifold before solving for the derivative.
+    # get the correct y0, so we can solve for yp0
     if len(algebraic_indices) > 0 and index >= 2:
-        # Define batched constraint functions based on discovered indices
-        def g_batched(yf):
-            def g_single(y_s):
-                return F(t0, y_s.view(state_shape), yp0_sample).flatten()[algebraic_indices]
-            return func.vmap(g_single)(yf)
-
-        def g_jacobian(yf):
-            def jac_single(y_s):
-                g_single = lambda y: F(t0, y.view(state_shape), yp0_sample).flatten()[algebraic_indices] # noqa: E731
-                return func.jacrev(g_single)(y_s)
-            return func.vmap(jac_single)(yf)
-
-        # Newton coordinate projection loop
-        for proj_iter in range(15):
-            g_val = g_batched(y_flat)
-            g_norm = torch.linalg.vector_norm(g_val, dim=-1)
-            if g_norm.max() < tol:
-                break
-                
-            J_g = g_jacobian(y_flat)
-            
-            # Solve minimum-norm least-squares update step:
-            # (J_g @ J_g^T) w = -g_val
-            # delta_y = J_g^T @ w
-            A = torch.bmm(J_g, J_g.transpose(-1, -2))
-            try:
-                w = torch.linalg.solve(A, -g_val.unsqueeze(-1))
-            except RuntimeError:
-                w = torch.linalg.lstsq(A, -g_val.unsqueeze(-1)).solution
-            
-            delta_y = torch.bmm(J_g.transpose(-1, -2), w).squeeze(-1)
-            y_flat = y_flat + delta_y
-            
-        y0_consistent = y_flat.view_as(y0)
+        # wrapper to extract algebraic equations only
+        def g_constraint(y_tensor):
+            return F(t0, y_tensor, yp0_sample)[..., algebraic_indices]
+        
+        y0_consistent = coordinate_projection(g=g_constraint, y_trial=y0, tol=tol, max_iter=projection_iter)
     else:
         y0_consistent = y0.clone()
         
