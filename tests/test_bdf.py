@@ -171,14 +171,24 @@ def test_bdf1_batched_direct():
 
 
 if __name__ == "__main__":
-    test_bdf1_analytical()
-    test_tr_bdf2_analytical()
-    test_bdf2_more_accurate_than_bdf1()
-    test_bdf1_vs_bdf2_convergence()
-    test_inconsistent_ic_raises()
-    test_consistent_yp0_computed()
-    testsolve_consistent_yp0_directly()
-    test_compute_consistent_initial_conditions_directly()
-    test_bdf1_batched_vmap()
-    test_bdf1_batched_direct()
+    print("Initializing solver test suite...\n")
+    
+    tests = [
+        ("test_bdf1_analytical", test_bdf1_analytical),
+        ("test_tr_bdf2_analytical", test_tr_bdf2_analytical),
+        ("test_bdf2_more_accurate_than_bdf1", test_bdf2_more_accurate_than_bdf1),
+        ("test_bdf1_vs_bdf2_convergence", test_bdf1_vs_bdf2_convergence),
+        ("test_inconsistent_ic_raises", test_inconsistent_ic_raises),
+        ("test_consistent_yp0_computed", test_consistent_yp0_computed),
+        ("testsolve_consistent_yp0_directly", testsolve_consistent_yp0_directly),
+        ("test_compute_consistent_initial_conditions_directly", test_compute_consistent_initial_conditions_directly),
+        ("test_bdf1_batched_vmap", test_bdf1_batched_vmap),
+        ("test_bdf1_batched_direct", test_bdf1_batched_direct),
+    ]
+
+    for i, (name, test_fn) in enumerate(tests, 1):
+        print(f"[{i}/{len(tests)}] Running {name}...", end="", flush=True)
+        test_fn()
+        print(" PASSED")
+        
     print("\nAll BDF and TR-BDF2 tests passed successfully.")
