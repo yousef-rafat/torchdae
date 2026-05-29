@@ -54,7 +54,7 @@ def bdf1_step(
     # functions for batched inputs
     batched_residual = lambda yf: torch.func.vmap(G_single)(yf, y_prev_flat)  # noqa: E731
     batched_jacobian = lambda yf: torch.func.vmap(torch.func.jacrev(G_single, argnums=0))(yf, y_prev_flat) # noqa: E731
-    jacobian_fn = StatefulJacobian(batched_jacobian, strategy, recompute_every=recompute_every)
+    jacobian_fn = StatefulJacobian(batched_jacobian, strategy, y_prev_flat, recompute_every=recompute_every)
     
     y_next_flat = batched_newton_solve(
         residual_fn=batched_residual,
@@ -87,7 +87,7 @@ def bdf2_step(
 
     batched_residual = lambda yf: torch.func.vmap(G_single)(yf, y_prev_flat, y_prev2_flat) # noqa: E731
     batched_jacobian = lambda yf: torch.func.vmap(torch.func.jacrev(G_single, argnums=0))(yf, y_prev_flat, y_prev2_flat)# noqa: E731
-    jacobian_fn = StatefulJacobian(batched_jacobian, strategy, recompute_every=recompute_every)
+    jacobian_fn = StatefulJacobian(batched_jacobian, strategy, y_prev_flat, recompute_every=recompute_every)
     
     y_next_flat = batched_newton_solve(
         residual_fn=batched_residual,
@@ -131,7 +131,7 @@ def tr_bdf2_step(
 
     batched_residual_tr = lambda yf: torch.func.vmap(G_tr_single)(yf, y_n_flat, yp_n_flat)  # noqa: E731
     batched_jacobian_tr = lambda yf: torch.func.vmap(torch.func.jacrev(G_tr_single, argnums=0))(yf, y_n_flat, yp_n_flat)  # noqa: E731
-    jacobian_fn_tr = StatefulJacobian(batched_jacobian_tr, strategy, recompute_every=recompute_every)
+    jacobian_fn_tr = StatefulJacobian(batched_jacobian_tr, strategy, y_n_flat, recompute_every=recompute_every)
     
     y_star_flat = batched_newton_solve(
         residual_fn=batched_residual_tr,
@@ -161,7 +161,7 @@ def tr_bdf2_step(
     if strategy == "always":
         batched_jacobian_bdf = lambda yf: \
             torch.func.vmap(torch.func.jacrev(G_bdf_single, argnums=0))(yf, y_star_flat, y_n_flat)  # noqa: E731
-        jacobian_fn_bdf = StatefulJacobian(batched_jacobian_bdf, strategy, recompute_every=recompute_every)
+        jacobian_fn_bdf = StatefulJacobian(batched_jacobian_bdf, strategy, None, recompute_every=recompute_every)
     else:
         last_J = jacobian_fn_tr.cached_J
         

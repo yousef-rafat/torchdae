@@ -14,10 +14,11 @@ from src.algorithms import compute_consistent_initial_conditions
 def _make_F():
     """Shared residual for index-1 test problem."""
     def F(t, y, yp):
+        t_tensor = torch.as_tensor(t, dtype=y.dtype, device=y.device)
         y1, y2 = y[..., 0], y[..., 1]
         y1p, _ = yp[..., 0], yp[..., 1]
         f1 = y1p + y1 - y2
-        f2 = y1 + y2 - torch.sin(t)
+        f2 = y1 + y2 - torch.sin(t_tensor)
         return torch.stack([f1, f2], dim=-1)
     return F
 
@@ -30,10 +31,10 @@ def _analytical_solution(t: float) -> torch.Tensor:
 
 def test_bdf1_analytical():
     F = _make_F()
-    y0 = torch.tensor([0.0, 0.0])
+    y0 = torch.tensor([[0.0, 0.0]])
     sol = solve_bdf1(F, (0.0, 1.0), y0, h=0.001, strict=True)
 
-    y_final = sol.ys[-1]
+    y_final = sol.ys[-1, 0]
     y_exact = _analytical_solution(1.0)
     err = (y_final - y_exact).abs().max().item()
 
@@ -43,10 +44,10 @@ def test_bdf1_analytical():
 def test_tr_bdf2_analytical():
     """Test that SDIRK TR-BDF2 integrates correctly."""
     F = _make_F()
-    y0 = torch.tensor([0.0, 0.0])
+    y0 = torch.tensor([[0.0, 0.0]])
     sol = solve_tr_bdf2(F, (0.0, 1.0), y0, h=0.001, strict=True)
 
-    y_final = sol.ys[-1]
+    y_final = sol.ys[-1, 0]
     y_exact = _analytical_solution(1.0)
     err = (y_final - y_exact).abs().max().item()
 
@@ -56,15 +57,15 @@ def test_tr_bdf2_analytical():
 def test_bdf2_more_accurate_than_bdf1():
     """BDF2 should be ~O(h^2) vs BDF1's O(h)."""
     F = _make_F()
-    y0 = torch.tensor([0.0, 0.0])
+    y0 = torch.tensor([[0.0, 0.0]])
     h = 0.01
 
     sol1 = solve_bdf1(F, (0.0, 1.0), y0, h=h, strict=True)
     sol2 = solve_bdf2(F, (0.0, 1.0), y0, h=h, strict=True)
 
     y_exact = _analytical_solution(1.0)
-    err1 = (sol1.ys[-1] - y_exact).abs().max().item()
-    err2 = (sol2.ys[-1] - y_exact).abs().max().item()
+    err1 = (sol1.ys[-1, 0] - y_exact).abs().max().item()
+    err2 = (sol2.ys[-1, 0] - y_exact).abs().max().item()
 
     assert err2 < err1 / 10, f"BDF2 ({err2:.3e}) not significantly better than BDF1 ({err1:.3e})"
 
@@ -72,7 +73,7 @@ def test_bdf2_more_accurate_than_bdf1():
 def test_bdf1_vs_bdf2_convergence():
     """Both should converge, BDF2 faster."""
     F = _make_F()
-    y0 = torch.tensor([0.0, 0.0])
+    y0 = torch.tensor([[0.0, 0.0]])
 
     errors_bdf1 = []
     errors_bdf2 = []
@@ -85,9 +86,9 @@ def test_bdf1_vs_bdf2_convergence():
         sol3 = solve_tr_bdf2(F, (0.0, 1.0), y0, h=h, strict=True)
         y_exact = _analytical_solution(1.0)
 
-        errors_bdf1.append((sol1.ys[-1] - y_exact).abs().max().item())
-        errors_bdf2.append((sol2.ys[-1] - y_exact).abs().max().item())
-        errors_tr_bdf2.append((sol3.ys[-1] - y_exact).abs().max().item())
+        errors_bdf1.append((sol1.ys[-1, 0] - y_exact).abs().max().item())
+        errors_bdf2.append((sol2.ys[-1, 0] - y_exact).abs().max().item())
+        errors_tr_bdf2.append((sol3.ys[-1, 0] - y_exact).abs().max().item())
 
     # BDF2 error should roughly quarter when h halves (O(h^2))
     ratio_bdf2 = errors_bdf2[0] / errors_bdf2[1]
@@ -100,7 +101,7 @@ def test_bdf1_vs_bdf2_convergence():
 
 def test_inconsistent_ic_raises():
     F = _make_F()
-    y0 = torch.tensor([1.0, 1.0])  # violates constraint
+    y0 = torch.tensor([[1.0, 1.0]])  # violates constraint
 
     try:
         solve_bdf1(F, (0.0, 1.0), y0, h=0.01, strict=True)
@@ -111,11 +112,11 @@ def test_inconsistent_ic_raises():
 
 def test_consistent_yp0_computed():
     F = _make_F()
-    y0 = torch.tensor([0.0, 0.0])
+    y0 = torch.tensor([[0.0, 0.0]])
     sol = solve_bdf1(F, (0.0, 0.01), y0, h=0.01, strict=False)
     yp0 = sol.yp_final
 
-    residual = F(0.0, y0, yp0)
+    residual = F(0.0, y0[0], yp0[0])
     norm = residual.norm().item()
     assert norm < 1e-6, f"Consistent yp0 residual: {norm:.3e}"
 
@@ -123,20 +124,20 @@ def test_consistent_yp0_computed():
 def testsolve_consistent_yp0_directly():
     """Test the private solve_consistent_yp0 function."""
     F = _make_F()
-    y0 = torch.tensor([0.0, 0.0])
+    y0 = torch.tensor([[0.0, 0.0]])
     yp0 = solve_consistent_yp0(F, 0.0, y0, tol=1e-10)
 
-    residual = F(0.0, y0, yp0)
+    residual = F(0.0, y0[0], yp0[0])
     assert residual.norm().item() < 1e-8
 
 
 def test_compute_consistent_initial_conditions_directly():
     """Test the public compute_consistent_initial_conditions function."""
     F = _make_F()
-    y0 = torch.tensor([0.1, 0.1])  # Slightly inconsistent coordinate
+    y0 = torch.tensor([[0.1, 0.1]])  # Slightly inconsistent coordinate
     y0_cons, yp0_cons = compute_consistent_initial_conditions(F, 0.0, y0, tol=1e-10)
 
-    residual = F(0.0, y0_cons, yp0_cons)
+    residual = F(0.0, y0_cons[0], yp0_cons[0])
     assert residual.norm().item() < 1e-8
 
 
@@ -145,8 +146,8 @@ def test_bdf1_batched_vmap():
     F = _make_F()
 
     def solve_one(y0):
-        sol = solve_bdf1(F, (0.0, 0.1), y0, h=0.01, strict=True)
-        return sol.ys[-1]
+        sol = solve_bdf1(F, (0.0, 0.1), y0.unsqueeze(0), h=0.01, strict=True)
+        return sol.ys[-1, 0]
 
     y0_batch = torch.stack([
         torch.tensor([0.0, 0.0]),
