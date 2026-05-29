@@ -7,7 +7,8 @@ import math
 import torch
 import torch.func as func
 
-from src.bdf import solve_bdf1, solve_bdf2, solve_tr_bdf2, _solve_consistent_yp0, compute_consistent_initial_conditions
+from src.bdf import solve_bdf1, solve_bdf2, solve_tr_bdf2, solve_consistent_yp0
+from src.algorithms import compute_consistent_initial_conditions
 
 
 def _make_F():
@@ -119,11 +120,11 @@ def test_consistent_yp0_computed():
     assert norm < 1e-6, f"Consistent yp0 residual: {norm:.3e}"
 
 
-def test_solve_consistent_yp0_directly():
-    """Test the private _solve_consistent_yp0 function."""
+def testsolve_consistent_yp0_directly():
+    """Test the private solve_consistent_yp0 function."""
     F = _make_F()
     y0 = torch.tensor([0.0, 0.0])
-    yp0 = _solve_consistent_yp0(F, 0.0, y0, tol=1e-10)
+    yp0 = solve_consistent_yp0(F, 0.0, y0, tol=1e-10)
 
     residual = F(0.0, y0, yp0)
     assert residual.norm().item() < 1e-8
@@ -175,7 +176,7 @@ if __name__ == "__main__":
     test_bdf1_vs_bdf2_convergence()
     test_inconsistent_ic_raises()
     test_consistent_yp0_computed()
-    test_solve_consistent_yp0_directly()
+    testsolve_consistent_yp0_directly()
     test_compute_consistent_initial_conditions_directly()
     test_bdf1_batched_vmap()
     test_bdf1_batched_direct()
