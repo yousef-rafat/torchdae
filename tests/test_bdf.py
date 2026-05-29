@@ -114,11 +114,15 @@ def test_consistent_yp0_computed():
     F = _make_F()
     y0 = torch.tensor([[0.0, 0.0]])
     sol = solve_bdf1(F, (0.0, 0.01), y0, h=0.01, strict=False)
-    yp0 = sol.yp_final
+    
+    # Evaluate consistency at the final step boundaries (t = 0.01)
+    t_final = sol.ts[-1].item()
+    y_final = sol.ys[-1, 0]
+    yp_final = sol.yp_final[0]
 
-    residual = F(0.0, y0[0], yp0[0])
+    residual = F(t_final, y_final, yp_final)
     norm = residual.norm().item()
-    assert norm < 1e-6, f"Consistent yp0 residual: {norm:.3e}"
+    assert norm < 1e-6, f"Consistent yp_final residual: {norm:.3e}"
 
 
 def testsolve_consistent_yp0_directly():

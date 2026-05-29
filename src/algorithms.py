@@ -109,7 +109,7 @@ def compute_consistent_initial_conditions(
     batched_residual = lambda yp: func.vmap(R_single)(yp, y0_cons_flat)  # noqa: E731
     batched_jacobian = lambda yp: func.vmap(func.jacrev(R_single, argnums=0))(yp, y0_cons_flat) # noqa: E731
     
-    jacobian_fn = StatefulJacobian(batched_jacobian, "always")
+    jacobian_fn = StatefulJacobian(batched_jacobian, "always", None)
     
     yp_consistent_flat = batched_newton_solve(
         residual_fn=batched_residual,
