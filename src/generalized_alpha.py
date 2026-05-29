@@ -1,12 +1,12 @@
 import math
-from typing import Callable, Optional, Tuple, List
 import torch
 import torch.func as func
 from functools import partial
 from dataclasses import dataclass
+from typing import Callable, Optional, Tuple, List
 
-from common import batched_newton_solve, StatefulJacobian, try_compile
-from util import handle_step_events
+from .common import batched_newton_solve, StatefulJacobian, try_compile
+from .util import handle_step_events
 
 __all__ = ["solve_generalized_alpha", "solve_consistent_a0", "MechanicalDAESolution"]
 

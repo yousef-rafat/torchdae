@@ -5,9 +5,9 @@ import warnings
 import torch.func as func
 from functools import partial
 from dataclasses import dataclass
-from projections import coordinate_projection
+from .projections import coordinate_projection
 from typing import Callable, Optional,  Tuple, Union
-from util import validate_residual_function, check_initial_condition_violation
+from .util import validate_residual_function, check_initial_condition_violation
 
 __all__ = ["DAESolution", "DAEFunctions"]
 

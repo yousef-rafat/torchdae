@@ -1,9 +1,9 @@
 import math
 import torch
-from algorithms import solve_consistent_yp0
+from .algorithms import solve_consistent_yp0
 from typing import Callable, Optional, Tuple, List, Union
-from util import handle_step_events
-from common import (
+from .util import handle_step_events
+from .common import (
     batched_newton_solve, StatefulJacobian, try_compile, DAESolution, DAEFunctions, resolve_dae_components, prepare_solver_inputs
 )
 

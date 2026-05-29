@@ -1,8 +1,8 @@
 import torch
 import torch.func as func
 from typing import Callable, Optional, Tuple
-from projections import coordinate_projection
-from common import batched_newton_solve, StatefulJacobian
+from .projections import coordinate_projection
+from .common import batched_newton_solve, StatefulJacobian
 
 __all__ = ["compute_consistent_initial_conditions"]
 
