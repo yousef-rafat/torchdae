@@ -140,7 +140,7 @@ def solve_radau_iia5(
     t_event, y_event = None, None
 
     # Step until t reaches the terminal simulation time t1
-    while t < t1:
+    while t < t1 - 1e-10:
         t_next = min(t + h, t1)
         h_actual = t_next - t
         y_next, yp_next = step_fn(

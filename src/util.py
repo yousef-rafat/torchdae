@@ -141,7 +141,7 @@ def handle_step_events(
         event_mask = torch.tensor(triggered, dtype=torch.bool, device=y_n.device)
         return t_event, y_star, yp_star, event_mask
 
-def check_initial_condition_violation(F, t0, y0,  yp0, tol=1e-8, strict=False, index=1) -> None:
+def check_initial_condition_violation(F, t0, y0, yp0, tol=1e-8, strict=False, index=1) -> None:
     """
     Verifies if initial conditions satisfy both explicit and hidden (high-index) 
     constraints.
@@ -152,12 +152,18 @@ def check_initial_condition_violation(F, t0, y0,  yp0, tol=1e-8, strict=False, i
         
         with torch.no_grad():
             result = F(t0, y0_s, yp0_s)
-            norm = result.norm().item()
+            norm = result.norm()
 
-        if norm > tol:
+        # for vmap and to bypass the need of .item()
+        try:
+            is_violating = bool(norm > tol)
+        except Exception:
+            is_violating = False
+
+        if is_violating:
             msg = (
                 f"Inconsistent initial conditions{idx_suffix} at t={t0}. "
-                f"||F(t0, y0, yp0)|| = {norm:.3e} (tol = {tol:.3e}). "
+                f"||F(t0, y0, yp0)|| = {norm.item():.3e} (tol = {tol:.3e}). "
                 f"Ensure F(t0, y0, yp0) ≈ 0 before integration."
             )
             if strict:
@@ -188,13 +194,19 @@ def check_initial_condition_violation(F, t0, y0,  yp0, tol=1e-8, strict=False, i
                     
                     # total time derivative representing the hidden constraint
                     hidden_residual = dg_dy_yp + dg_dt
-                    hidden_norm = hidden_residual.norm().item()
+                    hidden_norm = hidden_residual.norm()
                     
-                    if hidden_norm > tol:
+                    # same safe check as above
+                    try:
+                        is_hidden_violating = bool(hidden_norm > tol)
+                    except Exception:
+                        is_hidden_violating = False
+                    
+                    if is_hidden_violating:
                         level_str = "Index-2/Velocity" if index == 2 else "Index-3/Velocity"
                         msg = (
                             f"Inconsistent initial hidden constraints ({level_str} level){idx_suffix} at t={t0}. "
-                            f"||d/dt[g(y(t), t)]|| = {hidden_norm:.3e} (tol = {tol:.3e}). "
+                            f"||d/dt[g(y(t), t)]|| = {hidden_norm.item():.3e} (tol = {tol:.3e}). "
                             f"Ensure constraints are consistent before integration."
                         )
                         if strict:

@@ -95,7 +95,7 @@ def compute_consistent_initial_conditions(
         def g_constraint(y_tensor):
             return F(t0, y_tensor, yp0_sample)[..., algebraic_indices]
         
-        y0_consistent = coordinate_projection(g=g_constraint, y_trial=y0, tol=tol, max_iter=projection_iter)
+        y0_consistent = coordinate_projection(constraint_function=g_constraint, y_trial=y0, tol=tol, max_iter=projection_iter)
     else:
         y0_consistent = y0.clone()
         

@@ -56,7 +56,9 @@ def prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict, index=
     if h is None:
         h = (t1 - t0) / n_steps
     if n_steps is None:
-        n_steps = int(math.ceil((t1 - t0) / h))
+        # (1e-10) to prevent float representation errors
+        eps = 1e-12 if y0.dtype == torch.float64 else 1e-6
+        n_steps = int(math.ceil((t1 - t0) / h - eps))
         
     return h, n_steps, yp_guess
 
@@ -164,7 +166,12 @@ class StatefulJacobian:
                     slow_or_diverging = ratio > 0.9
                     recompute_mask = recompute_mask | slow_or_diverging
 
-            if recompute_mask.any():
+            try:
+                should_recompute = bool(recompute_mask.any())
+            except Exception:
+                should_recompute = True
+            
+            if should_recompute:
                 new_J = self.raw_jac_fn(x)
                 # expand mask from (B,) to (B, 1, 1) to match (B, D, D) Jacobian dimensions
                 mask_expanded = recompute_mask.unsqueeze(-1).unsqueeze(-1)
@@ -238,7 +245,13 @@ def batched_newton_solve(
         norm = torch.linalg.vector_norm(r, dim=-1)
         
         converged = converged | (norm < tol)
-        if converged.all():
+        
+        try:
+            all_converged = bool(converged.all())
+        except Exception:
+            all_converged = False
+            
+        if all_converged:
             break
             
         J = jacobian_fn(x, norm=norm, iteration=iteration)
@@ -255,7 +268,12 @@ def batched_newton_solve(
         
         # 14 iterations brings alpha down to 0.5^14 (~6e-5)
         for _ in range(14):
-            if not active_ls.any():
+            try:
+                any_active = bool(active_ls.any())
+            except Exception:
+                any_active = True
+                
+            if not any_active:
                 break
                 
             x_trial = x + alpha * delta

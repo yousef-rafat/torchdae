@@ -226,7 +226,7 @@ def solve_bdf1(
     event_triggered = False
     event_mask = torch.zeros(y0.shape[0], dtype=torch.bool, device=y0.device) if y0.dim() > 1 else torch.tensor(False, device=y0.device)
     t_event, y_event = None, None
-    while t < t1:
+    while t < t1 - 1e-10:
         t_next = min(t + h, t1)
         h_actual = t_next - t
         y_next = step_fn(
@@ -313,7 +313,7 @@ def solve_bdf2(
     t_event, y_event = None, None
 
     needs_bootstrap = True
-    while t < t1:
+    while t < t1 - 1e-10:
         t_next = min(t + h, t1)
         h_actual = t_next - t
         
@@ -411,7 +411,7 @@ def solve_tr_bdf2(
     event_mask = torch.zeros(y0.shape[0], dtype=torch.bool, device=y0.device) if y0.dim() > 1 else torch.tensor(False, device=y0.device)
     t_event, y_event = None, None
 
-    while t < t1:
+    while t < t1 - 1e-10:
         t_next = min(t + h, t1)
         h_actual = t_next - t
         y_next, yp_next = step_fn(

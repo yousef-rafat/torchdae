@@ -139,7 +139,9 @@ def test_compute_consistent_initial_conditions_directly():
     """Test the public compute_consistent_initial_conditions function."""
     F = _make_F()
     y0 = torch.tensor([[0.1, 0.1]])  # Slightly inconsistent coordinate
-    y0_cons, yp0_cons = compute_consistent_initial_conditions(F, 0.0, y0, tol=1e-10)
+    
+    # index2 to enable projection
+    y0_cons, yp0_cons = compute_consistent_initial_conditions(F, 0.0, y0, tol=1e-10, index=2)
 
     residual = F(0.0, y0_cons[0], yp0_cons[0])
     assert residual.norm().item() < 1e-8

@@ -315,7 +315,7 @@ def solve_generalized_alpha(
     t_event, q_event, v_event = None, None, None
 
     # Step until t reaches the terminal simulation time t1
-    while t < t1:
+    while t < t1 - 1e-10:
         t_next = min(t + h, t1)
         h_actual = t_next - t
         q_next, v_next, a_next, lam_next = step_fn(
