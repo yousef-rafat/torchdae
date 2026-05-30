@@ -90,7 +90,7 @@ def resolve_dae_components(
         F = partial(F, *args)
 
     if constraint_fn is not None:
-        projection_fn = partial(projection_fn, constraint_function = constraint_fn)
+        projection_fn = partial(projection_fn, constraint_fn)
 
     return F, constraint_fn, projection_fn, event_fn, reset_fn
 

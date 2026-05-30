@@ -17,6 +17,8 @@ from torchdae.bdf import solve_bdf2
 from torchdae.common import DAEFunctions
 from torchdae.index_reduction import simplify_dae
 
+torch.set_num_threads(1)
+
 # the pendulum physics function function
 def pendulum_physics(t: float, y: torch.Tensor, yp: torch.Tensor) -> torch.Tensor:
     """
