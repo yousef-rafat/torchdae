@@ -1,11 +1,10 @@
 """
-index_reduction.py
-
 Provides mathematical structural analysis and automatic index reduction 
-for Differential-Algebraic Equations (DAEs) using PyTorch.
+for Differential-Algebraic Equations (DAEs).
 """
 
 import torch
+import logging
 import torch.func as func
 from dataclasses import dataclass
 from typing import Callable, List, Set, Tuple, Dict
@@ -15,6 +14,7 @@ __all__ = [
     "IndexReducedDAE", "simplify_dae", "dummy_derivative_reduction", "DummyDerivativeDAE"
 ]
 
+logging.basicConfig(level=logging.INFO)
 
 @dataclass(frozen=True)
 class DAEStructure:
@@ -45,32 +45,47 @@ def pantelides_reduction(
     equations: List[Set[Tuple[int, int]]]
 ) -> List[int]:
     """
-    Applies the Pantelides algorithm to determine how many times each equation 
-    must be differentiated to reduce the DAE system to structural Index-1.
+    Applies the pantelides algorithm to determine how many times each equation 
+    must be differentiated to reduce the dae system to structural index-1.
     """
     n_eqs = len(equations)
     eq_diff_orders = [0] * n_eqs
     matching: Dict[Tuple[int, int], Tuple[int, int]] = {}
+    
+    # track the set of active equation nodes
+    active_eqs = set((i, 0) for i in range(n_eqs))
 
-    def dfs(
+    def get_w_values() -> List[int]:
+        # compute the highest derivative order of each variable among all active equations
+        w = [-1] * n_eqs
+        for eq_idx, d_eq in active_eqs:
+            for var_idx, d_var_orig in equations[eq_idx]:
+                w[var_idx] = max(w[var_idx], d_var_orig + d_eq)
+        return w
+
+    def dfs_pantelides(
         eq_node: Tuple[int, int], 
         visited_vars: Set[Tuple[int, int]], 
-        visited_eqs: Set[Tuple[int, int]]
+        visited_eqs: Set[Tuple[int, int]],
+        w: List[int]
     ) -> bool:
         eq_idx, d_eq = eq_node
         visited_eqs.add(eq_node)
         
         for var_idx, d_var_orig in equations[eq_idx]:
-            var_node = (var_idx, d_var_orig + d_eq)
-            
-            if var_node not in visited_vars:
-                visited_vars.add(var_node)
+            d_var = d_var_orig + d_eq
+            # edge only exists if the derivative is the highest active derivative in the system
+            if d_var == w[var_idx]:
+                var_node = (var_idx, d_var)
                 
-                if var_node not in matching or dfs(matching[var_node], visited_vars, visited_eqs):
-                    matching[var_node] = eq_node
-                    matching[eq_node] = var_node
-                    return True
+                if var_node not in visited_vars:
+                    visited_vars.add(var_node)
                     
+                    if var_node not in matching or dfs_pantelides(matching[var_node], visited_vars, visited_eqs, w):
+                        matching[var_node] = eq_node
+                        matching[eq_node] = var_node
+                        return True
+                        
         return False
 
     for i in range(n_eqs):
@@ -78,14 +93,24 @@ def pantelides_reduction(
         
         while len(queue) > 0:
             eq_node = queue.pop(0)
+            
+            # recalculate highest active derivatives
+            w = get_w_values()
+            
             visited_vars: Set[Tuple[int, int]] = set()
             visited_eqs: Set[Tuple[int, int]] = set()
             
-            if not dfs(eq_node, visited_vars, visited_eqs, matching):
+            if not dfs_pantelides(eq_node, visited_vars, visited_eqs, w):
+                # dfs failed: all visited equations form the singular subset
                 for (e_idx, d_e) in visited_eqs:
-                    eq_diff_orders[e_idx] = max(eq_diff_orders[e_idx], d_e + 1)
-                    queue.append((e_idx, d_e + 1))
+                    new_d = d_e + 1
+                    eq_diff_orders[e_idx] = max(eq_diff_orders[e_idx], new_d)
                     
+                    new_eq_node = (e_idx, new_d)
+                    active_eqs.add(new_eq_node)
+                    queue.append(new_eq_node)
+                    
+                    # break the obsolete matching of the differentiated node
                     matched_var = matching.get((e_idx, d_e))
                     if matched_var:
                         matching.pop((e_idx, d_e), None)
@@ -171,7 +196,7 @@ def analyze_pytorch_dae(
         for j in range(n_vars):
             if torch.abs(J_yp[i, j]) > 1e-12:
                 eq_dependencies.add((j, 1))
-            elif torch.abs(J_y[i, j]) > 1e-12:
+            if torch.abs(J_y[i, j]) > 1e-12:
                 eq_dependencies.add((j, 0))
                 
         equations.append(eq_dependencies)
@@ -261,7 +286,7 @@ class IndexReducedDAE:
                 
             elif order == 2: # index 3
                 # second-order Baumgarte stabilization
-                r_new[idx] = d2F_dt2[idx] + 2.0 * self.alpha * dF_dt[idx] + (self.alpha ** 2) * r[idx]
+                r_new[..., idx] = d2F_dt2[..., idx] + 2.0 * self.alpha * dF_dt[..., idx] + (self.alpha ** 2) * r[..., idx]
                 
         return r_new
 
@@ -328,7 +353,8 @@ def simplify_dae(
     
     # for index 1 and 0
     if max(structure.differentiation_orders) == 0:
-        return F
+        logging.info("Problem index is either 1 or 0, can't apply index reduction")
+        return F, None, None
         
     if structure.reduction_algorithm == "dummy_derivative":
         F_reduced = DummyDerivativeDAE(F, structure)

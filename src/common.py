@@ -11,13 +11,15 @@ from .util import validate_residual_function, check_initial_condition_violation
 
 __all__ = ["DAESolution", "DAEFunctions"]
 
+logging.basicConfig(level=logging.INFO)
+
 @dataclass
 class DAEFunctions:
     F: Callable
     event_fn: Optional[Callable] = None
     reset_fn: Optional[Callable] = None
     constraint_fn: Optional[Callable] = None
-    projection_fn: Optional[Callable] = coordinate_projection
+    projection_fn: Optional[Callable] = None
 
 @dataclass(frozen=True)
 class DAESolution:
@@ -81,12 +83,14 @@ def resolve_dae_components(
         reset_fn = None
 
     if constraint_fn is not None and projection_fn is None:
-        logging.info("No projection function specified, defaulting to coordinate_projector")
-        from projections import make_coordinate_projector
-        projection_fn = make_coordinate_projector(constraint_fn, tol=step_tol)
+        logging.info("No projection function specified, defaulting to coordinate_projection")
+        projection_fn = coordinate_projection
 
     if args is not None:
         F = partial(F, *args)
+
+    if constraint_fn is not None:
+        projection_fn = partial(projection_fn, constraint_function = constraint_fn)
 
     return F, constraint_fn, projection_fn, event_fn, reset_fn
 
