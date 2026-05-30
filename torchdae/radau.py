@@ -3,7 +3,7 @@ import torch
 import torch.func as func
 from .bdf import apply_event_reset
 from .util import handle_step_events
-from .algorithms import solve_consistent_yp0
+from .algorithms import compute_consistent_initial_conditions
 from typing import Callable, Optional, Tuple, List
 from .common import (
     batched_newton_solve, StatefulJacobian, try_compile, DAESolution, prepare_solver_inputs, resolve_dae_components
@@ -123,7 +123,7 @@ def solve_radau_iia5(
     t0, t1 = t_span
     h, n_steps, yp_guess = prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict)
 
-    yp = solve_consistent_yp0(F, t0, y0, yp_guess, tol=ic_tol)
+    _, yp = compute_consistent_initial_conditions(F, t0, y0, yp_guess, tol=ic_tol)
 
     ys: List[torch.Tensor] = [y0.clone()]
     ts: List[float] = [t0]

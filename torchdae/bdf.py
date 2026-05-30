@@ -30,7 +30,7 @@ def apply_event_reset(
     ys.append(y_reset)
     ts.append(t_val)
     
-    yp_reset = compute_consistent_initial_conditions(F, t_val, y_reset, yp_evt, tol=ic_tol)
+    _, yp_reset = compute_consistent_initial_conditions(F, t_val, y_reset, yp_evt, tol=ic_tol)
     
     return t_val, y_reset, yp_reset
 
@@ -395,7 +395,7 @@ def solve_tr_bdf2(
     h, n_steps, yp_guess = prepare_solver_inputs(F, t_span, y0, yp0, h, n_steps, ic_tol, strict)
 
     # for tr_bdf2, solving for intial yp0 is needed
-    yp = compute_consistent_initial_conditions(F, t0, y0, yp_guess, tol=ic_tol)
+    _, yp = compute_consistent_initial_conditions(F, t0, y0, yp_guess, tol=ic_tol)
 
     ys: List[torch.Tensor] = [y0.clone()]
     ts: List[float] = [t0]
