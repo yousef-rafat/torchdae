@@ -73,7 +73,7 @@ def resolve_dae_components(
         F = F_or_system.F
         event_fn = getattr(F_or_system, "event_fn", None)
         reset_fn = getattr(F_or_system, "reset_fn", None)
-        constraint_fn = getattr(F_or_system, "constrain_fn", None)
+        constraint_fn = getattr(F_or_system, "constraint_fn", None)
         projection_fn = getattr(F_or_system, "projection_fn", None)
     else:
         F = F_or_system
