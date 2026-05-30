@@ -13,9 +13,9 @@ import torch
 import matplotlib.pyplot as plt
 
 
-from src.bdf import solve_bdf2
-from src.common import DAEFunctions
-from src.index_reduction import simplify_dae
+from torchdae.bdf import solve_bdf2
+from torchdae.common import DAEFunctions
+from torchdae.index_reduction import simplify_dae
 
 # =========================================================================
 # 1. DEFINE PHYSICS & CONSTRAINTS

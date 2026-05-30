@@ -7,8 +7,8 @@ import math
 import torch
 import torch.func as func
 
-from src.bdf import solve_bdf1, solve_bdf2, solve_tr_bdf2, solve_consistent_yp0
-from src.algorithms import compute_consistent_initial_conditions
+from torchdae.bdf import solve_bdf1, solve_bdf2, solve_tr_bdf2, solve_consistent_yp0
+from torchdae.algorithms import compute_consistent_initial_conditions
 
 
 def _make_F():
