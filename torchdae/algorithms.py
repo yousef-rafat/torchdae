@@ -6,57 +6,6 @@ from .common import batched_newton_solve, StatefulJacobian
 
 __all__ = ["compute_consistent_initial_conditions"]
 
-def solve_consistent_yp0(
-    F: Callable,
-    t0: float,
-    y0: torch.Tensor,
-    yp0_guess: Optional[torch.Tensor] = None,
-    tol: float = 1e-8,
-    max_iter: int = 50,
-    damping: float = 1.0,
-) -> torch.Tensor:
-    """
-    Given batched y0, solve F(t0, y0, yp0) = 0 for yp0 using batched Newton.
-
-    Assumes y0 is static and correct
-    """
-    yp = (
-        yp0_guess.clone().detach()
-        if yp0_guess is not None
-        else torch.zeros_like(y0)
-    )
-
-    state_shape = y0.shape[1:]
-    y0_flat = y0.flatten(start_dim=1)
-    yp_flat = yp.flatten(start_dim=1)
-
-    # single-instance residual function (D,) -> (D,)
-    def R_single(ypf_single: torch.Tensor, y_single: torch.Tensor):
-        y_in = y_single.view(state_shape)
-        yp_in = ypf_single.view(state_shape)
-        res = F(t0, y_in, yp_in)
-        return res.flatten()
-
-    batched_residual = lambda ypf: torch.func.vmap(R_single)(ypf, y0_flat)  # noqa: E731
-    
-    # argnums=0 ensures we compute the Jacobian with respect to ypf_single
-    def batched_jacobian(ypf):
-        return torch.func.vmap(
-            torch.func.jacrev(R_single, argnums=0)
-        )(ypf, y0_flat)
-
-    yp_consistent_flat = batched_newton_solve(
-        residual_fn=batched_residual,
-        jacobian_fn=batched_jacobian,
-        x0=yp_flat,
-        tol=tol,
-        max_iter=max_iter,
-        damping=damping,
-    )
-
-    return yp_consistent_flat.view(y0.shape)
-
-
 def compute_consistent_initial_conditions(
     F: Callable,
     t0: float,

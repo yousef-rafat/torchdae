@@ -7,7 +7,7 @@ import math
 import torch
 import torch.func as func
 
-from torchdae.bdf import solve_bdf1, solve_bdf2, solve_tr_bdf2, solve_consistent_yp0
+from torchdae.bdf import solve_bdf1, solve_bdf2, solve_tr_bdf2
 from torchdae.algorithms import compute_consistent_initial_conditions
 
 
@@ -124,17 +124,6 @@ def test_consistent_yp0_computed():
     norm = residual.norm().item()
     assert norm < 1e-6, f"Consistent yp_final residual: {norm:.3e}"
 
-
-def testsolve_consistent_yp0_directly():
-    """Test the private solve_consistent_yp0 function."""
-    F = _make_F()
-    y0 = torch.tensor([[0.0, 0.0]])
-    yp0 = solve_consistent_yp0(F, 0.0, y0, tol=1e-10)
-
-    residual = F(0.0, y0[0], yp0[0])
-    assert residual.norm().item() < 1e-8
-
-
 def test_compute_consistent_initial_conditions_directly():
     """Test the public compute_consistent_initial_conditions function."""
     F = _make_F()
@@ -186,7 +175,6 @@ if __name__ == "__main__":
         ("test_bdf1_vs_bdf2_convergence", test_bdf1_vs_bdf2_convergence),
         ("test_inconsistent_ic_raises", test_inconsistent_ic_raises),
         ("test_consistent_yp0_computed", test_consistent_yp0_computed),
-        ("testsolve_consistent_yp0_directly", testsolve_consistent_yp0_directly),
         ("test_compute_consistent_initial_conditions_directly", test_compute_consistent_initial_conditions_directly),
         ("test_bdf1_batched_vmap", test_bdf1_batched_vmap),
         ("test_bdf1_batched_direct", test_bdf1_batched_direct),

@@ -1,6 +1,6 @@
 import math
 import torch
-from generalized_alpha import solve_generalized_alpha, solve_consistent_a0
+from torchdae.generalized_alpha import solve_generalized_alpha, solve_consistent_a0
 
 
 def _make_pendulum_system(m=1.0, g=9.81, L=1.0):

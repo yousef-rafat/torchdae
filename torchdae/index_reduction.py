@@ -45,9 +45,13 @@ def pantelides_reduction(
     equations: List[Set[Tuple[int, int]]]
 ) -> List[int]:
     """
-    Applies the pantelides algorithm to determine how many times each equation 
+    Applies the Pantelides algorithm to determine how many times each equation 
     must be differentiated to reduce the dae system to structural index-1.
+
+    The Pantelides algorithm ensures an equal number of equations and variables
     """
+    # an equation is an index in the vector of the residual and a variable is an index in the jacobian
+
     n_eqs = len(equations)
     eq_diff_orders = [0] * n_eqs
     matching: Dict[Tuple[int, int], Tuple[int, int]] = {}

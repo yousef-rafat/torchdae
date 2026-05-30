@@ -17,10 +17,7 @@ from torchdae.bdf import solve_bdf2
 from torchdae.common import DAEFunctions
 from torchdae.index_reduction import simplify_dae
 
-# =========================================================================
-# 1. DEFINE PHYSICS & CONSTRAINTS
-# =========================================================================
-
+# the pendulum physics function function
 def pendulum_physics(t: float, y: torch.Tensor, yp: torch.Tensor) -> torch.Tensor:
     """
     y[0], y[1] = x, y coordinates (position)
@@ -43,11 +40,6 @@ def pendulum_physics(t: float, y: torch.Tensor, yp: torch.Tensor) -> torch.Tenso
 def pendulum_position_constraint(y: torch.Tensor) -> torch.Tensor:
     """Position constraint: g(y) = x^2 + y^2 - 1.0 = 0"""
     return y[..., 0]**2 + y[..., 1]**2 - 1.0
-
-
-# =========================================================================
-# 2. RUN SIMULATIONS
-# =========================================================================
 
 if __name__ == "__main__":
     print("Setting up Cartesian Pendulum Simulation...")
@@ -77,20 +69,14 @@ if __name__ == "__main__":
     problem_no_proj = DAEFunctions(F=F_reduced_1)
     sol_no_proj = solve_bdf2(problem_no_proj, t_span, y0_reduced_1, yp0=yp0_reduced_1, h=h_step)
 
-    # -------------------------------------------------------------------------
-    # RUN 2: Index Reduction + Post-Step Coordinate Projection -> Zero Drift
-    # -------------------------------------------------------------------------
     print("\n[Run 2] Integrating with Index Reduction + Coordinate Projection...")
     
     problem_with_proj = DAEFunctions(
         F=F_reduced_1,
-        constrain_fn=pendulum_position_constraint  # Automatically configures the coordinate projector!
+        constraint_fn=pendulum_position_constraint
     )
     sol_with_proj = solve_bdf2(problem_with_proj, t_span, y0_reduced_1, yp0=yp0_reduced_1, h=h_step)
 
-    # =========================================================================
-    # 3. VISUALIZE RESULTS WITH MATPLOTLIB
-    # =========================================================================
     print("\nPlotting results...")
     
     # Extract coordinates
