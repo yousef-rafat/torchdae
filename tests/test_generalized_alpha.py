@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import math
 import torch
 from torchdae.generalized_alpha import solve_generalized_alpha, solve_consistent_a0
