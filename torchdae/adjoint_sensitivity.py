@@ -2,8 +2,6 @@ import torch
 import torch.func as func
 from typing import Callable, Tuple, List, Optional
 
-from projections import coordinate_projection
-
 __all__ = ["DAEAdjointFunction", "solve_dae_adjoint"]
 
 
@@ -14,101 +12,113 @@ class DAEAdjointFunction(torch.autograd.Function):
         y0: torch.Tensor, 
         t_span: Tuple[float, float], 
         h: float, 
-        p_flat: torch.Tensor, 
         F: Callable, 
         solver_fn: Callable,
-        structure: any
+        *params: torch.Tensor
     ) -> torch.Tensor:
         with torch.no_grad():
             sol = solver_fn(F, t_span, y0, h=h)
             
-        ctx.save_for_backward(sol.ys, sol.ts, p_flat)
+        ctx.save_for_backward(sol.ys, sol.ts, *params)
         ctx.F = F
         ctx.h = h
         ctx.solver_fn = solver_fn
-        ctx.structure = structure
         return sol.ys
 
     @staticmethod
     def backward(ctx, grad_ys: torch.Tensor) -> Tuple[Optional[torch.Tensor], ...]:
-        # the adjoint sensitivity specifically for daes require mass matricies
-        # and requires solving linear system of equations 
-        ys, ts, p_flat = ctx.saved_tensors
+        saved_tensors = ctx.saved_tensors
+        ys = saved_tensors[0]
+        ts = saved_tensors[1]
+        params = saved_tensors[2:]
+        
         F = ctx.F
         h = ctx.h
-        structure = ctx.structure
         
         T_steps = ys.shape[0]
-        batch_size = ys.shape[1]
-        
         grad_output = grad_ys[-1]
-
-        if structure is None:
-            algebraic_indices = structure.algebraic_equations
-        else:
-            algebraic_indices = 0
         
         # compute the mass matrix: dF/dy_dot
-        t_np1 = ts[-1].item()
-        y_np1 = ys[-1]
-        yp_np1 = (ys[-1] - ys[-2]) / h if T_steps > 1 else torch.zeros_like(y_np1)
+        t_N = ts[-1].item()
+        y_N = ys[-1]
+        yp_N = (ys[-1] - ys[-2]) / h if T_steps > 1 else torch.zeros_like(y_N)
         
-        M_np1 = func.vmap(func.jacrev(lambda yp_s: F(t_np1, y_np1[0], yp_s)))(yp_np1)
-        M_np1_T = M_np1.transpose(-1, -2)
+        J_N = func.vmap(func.jacrev(lambda y_s: F(t_N, y_s, yp_N[0])))(y_N)
+        M_N = func.vmap(func.jacrev(lambda yp_s: F(t_N, y_N[0], yp_s)))(yp_N)
+        
+        M_N_T = M_N.transpose(-1, -2)
+        J_N_T = J_N.transpose(-1, -2)
+        
+        # Solve (M_N^T + h * J_N^T) * lam = h * grad_output
+        A_terminal = M_N_T + h * J_N_T
+        rhs_terminal = h * grad_output
         
         # get the inital adjoint sensitivity from mass matrix
         try:
-            lam = torch.linalg.solve(M_np1_T, grad_output.unsqueeze(-1)).squeeze(-1)
+            lam = torch.linalg.solve(A_terminal, rhs_terminal.unsqueeze(-1)).squeeze(-1)
         except RuntimeError:
-            lam = torch.linalg.lstsq(M_np1_T, grad_output.unsqueeze(-1)).solution.squeeze(-1)
-        grad_p = torch.zeros_like(p_flat)
+            lam = torch.linalg.lstsq(A_terminal, rhs_terminal.unsqueeze(-1)).solution.squeeze(-1)
+            
+        grad_params_list = [torch.zeros_like(p) for p in params]
         
-        for n in reversed(range(T_steps - 1)):
+        # Accumulate parameter gradients at the terminal step n = N
+        if len(params) > 0:
+            y_temp = y_N.detach().requires_grad_(True)
+            yp_temp = yp_N.detach().requires_grad_(True)
+            
+            with torch.enable_grad():
+                res = F(t_N, y_temp, yp_temp)
+                scalar_product = torch.sum(lam * res)
+                
+            grads = torch.autograd.grad(scalar_product, params, allow_unused=True)
+            for i, g in enumerate(grads):
+                if g is not None:
+                    grad_params_list[i] = grad_params_list[i] - g
+                    
+        M_np1_T = M_N_T
+        
+        for n in reversed(range(1, T_steps - 1)):
             t_n = ts[n].item()
             y_n = ys[n]
-            yp_n = (ys[n+1] - ys[n]) / h
+            yp_n = (ys[n] - ys[n-1]) / h
             
-            # compute dynamic j_n and m_n at the current step
+            # Compute Jacobians at step n
             J_n = func.vmap(func.jacrev(lambda y_s: F(t_n, y_s, yp_n[0])))(y_n)
             M_n = func.vmap(func.jacrev(lambda yp_s: F(t_n, y_n[0], yp_s)))(yp_n)
             
             M_n_T = M_n.transpose(-1, -2)
+            J_n_T = J_n.transpose(-1, -2)
             
-            # solve (m_n^t - h * j_n^t) * lam_n = m_{n+1}^t * lam_{n+1} + h * grad_ys[n]
+            # Solve (M_n^T + h * J_n^T) * lam_n = M_{n+1}^T * lam_{n+1} + h * grad_ys[n]
             # to get the propogation of sensitivities across one timestep
-            A = M_n_T - h * J_n.transpose(-1, -2)
+            A = M_n_T + h * J_n_T
             rhs = torch.bmm(M_np1_T, lam.unsqueeze(-1)).squeeze(-1) + h * grad_ys[n]
             
             try:
                 lam = torch.linalg.solve(A, rhs.unsqueeze(-1)).squeeze(-1)
             except RuntimeError:
                 lam = torch.linalg.lstsq(A, rhs.unsqueeze(-1)).solution.squeeze(-1)
-            
-            # project lam into the constrained space of g(y) = 0
-            if len(algebraic_indices) > 0:
-                G_a = J_n[:, algebraic_indices, :]
-                g_adj = lambda lam_val: torch.bmm(G_a, lam_val.unsqueeze(-1)).squeeze(-1)  # noqa: E731
-                lam = coordinate_projection(g_adj, lam, tol=1e-8)
                 
             # map the sensitivity back to the parameter space (convert sensitivity into gradients)
-            if p_flat.numel() > 0:
-                def compute_vjp_p(y_s, yp_s, lam_s, t_val):
-                    # f_p treats F as a function of the parameter vector p
-                    f_p = lambda p_val: F(t_val, y_s, yp_s) # noqa: E731
-                    _, vjp_fn = func.vjp(f_p, p_flat)
-                    return vjp_fn(lam_s)[0]
+            if len(params) > 0:
+                y_temp = y_n.detach().requires_grad_(True)
+                yp_temp = yp_n.detach().requires_grad_(True)
                 
-                # evaluate the vjps across the batch and accumulate
-                vjp_step = func.vmap(compute_vjp_p)(y_n, yp_n, lam, torch.full((batch_size,), t_n, device=y_n.device))
-                grad_p = grad_p + vjp_step.sum(dim=0) * h
+                with torch.enable_grad():
+                    res = F(t_n, y_temp, yp_temp)
+                    scalar_product = torch.sum(lam * res)
+                
+                grads = torch.autograd.grad(scalar_product, params, allow_unused=True)
+                for i, g in enumerate(grads):
+                    if g is not None:
+                        grad_params_list[i] = grad_params_list[i] - g
                 
             M_np1_T = M_n_T
             
         # compute gradient with respect to initial state y0
-        grad_y0 = torch.bmm(M_np1_T, lam.unsqueeze(-1)).squeeze(-1)
+        grad_y0 = torch.bmm(M_np1_T, lam.unsqueeze(-1)).squeeze(-1) / h
         
-        return grad_y0, None, None, grad_p, None, None, None
-
+        return (grad_y0, None, None, None, None, *grad_params_list)
 
 def solve_dae_adjoint(
     F: Callable,
@@ -117,7 +127,5 @@ def solve_dae_adjoint(
     h: float,
     params: List[torch.Tensor],
     solver_fn: Callable,
-    structure: Optional[any] = None
 ) -> torch.Tensor:
-    p_flat = torch.cat([p.flatten() for p in params]) if len(params) > 0 else torch.empty(0, device=y0.device)
-    return DAEAdjointFunction.apply(y0, t_span, h, p_flat, F, solver_fn, structure)
+    return DAEAdjointFunction.apply(y0, t_span, h, F, solver_fn, *params)
