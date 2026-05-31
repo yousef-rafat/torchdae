@@ -74,7 +74,7 @@ def radau_iia5_step(
     # Initial guess: flat zeros for stage derivatives
     x0 = torch.zeros((batch_size, 3 * ndof), dtype=y_n.dtype, device=y_n.device)
     
-    jacobian_fn = StatefulJacobian(batched_jacobian, strategy, recompute_every=recompute_every)
+    jacobian_fn = StatefulJacobian(batched_jacobian, strategy, x0, recompute_every=recompute_every)
     
     x_sol = batched_newton_solve(
         residual_fn=batched_residual,
