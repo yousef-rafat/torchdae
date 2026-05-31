@@ -20,6 +20,7 @@ def coordinate_projection(
     y_trial onto the algebraic constraint manifold g(y) = 0 using a minimum-norm 
     least-squares correction.
     """
+    # coordinate projection checks the convergence of the constrain function and whether it equals 0
     state_shape = y_trial.shape[1:]
     y_flat = y_trial.flatten(start_dim=1).clone()
     y_prev_flat = y_flat.clone()
