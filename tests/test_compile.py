@@ -91,7 +91,7 @@ def run_compile_test():
             
             print(f"  --> {name} compiled and ran successfully.")
             
-        except Exception as e:
+        except Exception:
             print(f"  [!] Step Compilation FAILED for {name}")
             traceback.print_exc()
             all_passed = False

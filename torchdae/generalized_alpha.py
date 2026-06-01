@@ -5,7 +5,7 @@ from functools import partial
 from dataclasses import dataclass
 from typing import Callable, Optional, Tuple, List
 
-from .common import batched_newton_solve, StatefulJacobian, try_compile
+from .common import batched_newton_solve, StatefulJacobian, try_compile, resolve_dae_components
 from .util import handle_step_events
 
 __all__ = ["solve_generalized_alpha", "solve_consistent_a0", "MechanicalDAESolution"]
@@ -55,8 +55,8 @@ def solve_consistent_a0(
     F: Callable[[float, torch.Tensor, torch.Tensor], torch.Tensor],
     g: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
     t0: float,
-    q0: torch.Tensor,                                      # Shape: (B, *state_shape)
-    v0: torch.Tensor,                                      # Shape: (B, *state_shape)
+    q0: torch.Tensor,
+    v0: torch.Tensor,
     tol: float = 1e-8,
     max_iter: int = 50,
     damping: float = 1.0,
@@ -86,7 +86,6 @@ def solve_consistent_a0(
     v0_flat = v0.flatten(start_dim=1)
 
     # Precompute constraint Jacobians at initial condition
-    # This prevents taking expensive nested derivatives inside Newton iterations
     def G_q_single(q_single, v_single):
         g_of_q = lambda q_unflat: g(q_unflat, v_single.view(state_shape)) # noqa: E731
         return func.jacrev(g_of_q)(q_single.view(state_shape)).reshape(ncon, ndof)
@@ -109,7 +108,8 @@ def solve_consistent_a0(
         M_eval = M(q_unflat)
         force = F(t0, q_unflat, v_unflat)
 
-        R_dyn = M_eval @ a - force.flatten() + G_q_s.T @ lam
+        # FIXED: Physical constraint force is G_v_s^T @ lam, not G_q_s^T @ lam
+        R_dyn = M_eval @ a - force.flatten() + G_v_s.T @ lam
         R_con = G_q_s @ v0_s + G_v_s @ a
 
         return torch.cat([R_dyn, R_con])
@@ -184,7 +184,8 @@ def generalized_alpha_step(
         q_new = q_n_s + h * v_n_s + h**2 * ((0.5 - beta) * a_n_s + beta * a_new)
         v_new = v_n_s + h * ((1.0 - gamma) * a_n_s + gamma * a_new)
 
-        t_af = t_n + h - alpha_f * h
+        # generalized alpha lerp
+        t_af = t_n + (1.0 - alpha_f) * h
         q_af = (1.0 - alpha_f) * q_new + alpha_f * q_n_s
         v_af = (1.0 - alpha_f) * v_new + alpha_f * v_n_s
         a_am = (1.0 - alpha_m) * a_new + alpha_m * a_n_s
@@ -198,11 +199,11 @@ def generalized_alpha_step(
         force = F(t_af, q_af_unflat, v_af_unflat)
         R_dyn = M_af @ a_am - force.flatten()
 
-        # Constraint Jacobian G(q_new) = dg/dq at (q_new, v_new)
-        g_of_q = lambda q: g(q, v_new_unflat) # noqa: E731
-        G_q = func.jacrev(g_of_q)(q_new_unflat).reshape(ncon, ndof)
+        # FIXED: Physical constraint Jacobian is G_v = dg/dv, not G_q = dg/dq
+        g_of_v = lambda v: g(q_new_unflat, v) # noqa: E731
+        G_v = func.jacrev(g_of_v)(v_new_unflat).reshape(ncon, ndof)
 
-        R_dyn = R_dyn + G_q.T @ lam_new
+        R_dyn = R_dyn + G_v.T @ lam_new
         R_con = g(q_new_unflat, v_new_unflat).flatten()
 
         return torch.cat([R_dyn, R_con])
@@ -244,10 +245,11 @@ def solve_generalized_alpha(
     F: Callable[[float, torch.Tensor, torch.Tensor], torch.Tensor],
     g: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
     t_span: Tuple[float, float],
-    q0: torch.Tensor,                                      # Shape: (B, *state_shape)
-    v0: torch.Tensor,                                      # Shape: (B, *state_shape)
-    a0: Optional[torch.Tensor] = None,                     # Shape: (B, *state_shape)
-    lam0: Optional[torch.Tensor] = None,                   # Shape: (B, ncon)
+    q0: torch.Tensor,
+    v0: torch.Tensor,
+    args: Optional[Tuple] = None,
+    a0: Optional[torch.Tensor] = None,
+    lam0: Optional[torch.Tensor] = None,
     h: Optional[float] = None,
     n_steps: Optional[int] = None,
     rho_inf: float = 0.8,
@@ -261,16 +263,12 @@ def solve_generalized_alpha(
     strategy: str = "always",
     recompute_every: Optional[int] = None,
     compile_steps: bool = False,
-    event_fn: Optional[Callable] = None,
-    reset_fn: Optional[Callable] = None,
     max_iter_for_events: int = 100,
-    args: Optional[Tuple] = None,
 ) -> MechanicalDAESolution:
     """
     Generalized-α solver for index-2 mechanical DAE with batch support.
     """
-    if args is not None:
-        F = partial(F, *args)
+    F, constraint_fn, projection_fn, event_fn, reset_fn = resolve_dae_components(F, args, tol)
     M = _make_M_callable(M)
     t0, t1 = t_span
 
@@ -284,7 +282,7 @@ def solve_generalized_alpha(
     if alpha_m is None:
         alpha_m, alpha_f, beta, gamma = _compute_params_from_rho_inf(rho_inf)
 
-    # for generalized_alpha, solving for consistent initial conditions is needed
+    # Solve for consistent initial conditions if not provided
     if a0 is None or lam0 is None:
         a, lam = solve_consistent_a0(
             M, F, g, t0, q0, v0, 
@@ -325,6 +323,9 @@ def solve_generalized_alpha(
             strategy=strategy, recompute_every=recompute_every,
         )
 
+        if projection_fn is not None:
+            q_next = projection_fn(q_next)
+
         # checks for overshoots and corrects them
         if event_fn is not None:
             # Concatenate position and velocity to form the unified state y = [q, v]
@@ -358,7 +359,6 @@ def solve_generalized_alpha(
                 # record the exact boundary state
                 qs.append(q_event)
                 vs.append(v_event)
-                # handles batched and unbatched
                 ts.append(t_event.item() if t_event.dim() == 0 else t_event[0].item())
 
                 if reset_fn is None:

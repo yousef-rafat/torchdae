@@ -142,37 +142,51 @@ def test_adjoint_gradient_correctness():
     y_final = ys[-1]
     yp_final = (ys[-1] - ys[-2]) / h_step
     
+    # Compute Jacobians at t = T
     M_np1 = func.vmap(lambda y_s, yp_s: func.jacrev(lambda yp_val: F(t_final, y_s, yp_val))(yp_s))(y_final, yp_final)
     M_np1_T = M_np1.transpose(-1, -2)
+    
+    J_final = func.vmap(lambda y_s, yp_s: func.jacrev(lambda y_val: F(t_final, y_val, yp_s))(y_s))(y_final, yp_final)
+    J_final_T = J_final.transpose(-1, -2)
     
     grad_ys_mock = torch.zeros_like(ys)
     grad_output = y_final.clone().detach()
     
+    # Corrected terminal discrete adjoint step: (M_T^T + h * J_T^T) * lam = h * grad_output
+    A_terminal = M_np1_T + h_step * J_final_T
+    rhs_terminal = h_step * grad_output
+    
     try:
-        lam_val = torch.linalg.solve(M_np1_T, grad_output.unsqueeze(-1)).squeeze(-1)
+        lam_val = torch.linalg.solve(A_terminal, rhs_terminal.unsqueeze(-1)).squeeze(-1)
     except RuntimeError:
-        lam_val = torch.linalg.lstsq(M_np1_T, grad_output.unsqueeze(-1)).solution.squeeze(-1)
+        lam_val = torch.linalg.lstsq(A_terminal, rhs_terminal.unsqueeze(-1)).solution.squeeze(-1)
         
-    lambdas.append(lam_val[0].clone())
+    # Convert discrete multiplier to continuous-scale costate (divided by h)
+    lam_val_continuous = lam_val / h_step
+    lambdas.append(lam_val_continuous[0].clone())
     
     for n in reversed(range(ys.shape[0] - 1)):
         t_n = ts[n]
         y_n = ys[n]
-        yp_n = (ys[n+1] - ys[n]) / h_step
+        # Approximated derivative boundary at n = 0
+        yp_n = (ys[n] - ys[n-1]) / h_step if n > 0 else (ys[1] - ys[0]) / h_step
         
         J_n = func.vmap(lambda y_s, yp_s: func.jacrev(lambda y_val: F(t_n, y_val, yp_s))(y_s))(y_n, yp_n)
         M_n = func.vmap(lambda y_s, yp_s: func.jacrev(lambda yp_val: F(t_n, y_s, yp_val))(yp_s))(y_n, yp_n)
         
         M_n_T = M_n.transpose(-1, -2)
-        A = M_n_T - h_step * J_n.transpose(-1, -2)
-        rhs = torch.bmm(M_np1_T, lam_val.unsqueeze(-1)).squeeze(-1) + h_step * grad_ys_mock[n]
+        J_n_T = J_n.transpose(-1, -2)
+        
+        # Corrected recurrence: (M_n^T + h * J_n^T) * lam_n_continuous = M_{n+1}^T * lam_{n+1}_continuous + grad_ys[n]
+        A = M_n_T + h_step * J_n_T
+        rhs = torch.bmm(M_np1_T, lam_val_continuous.unsqueeze(-1)).squeeze(-1) + grad_ys_mock[n]
         
         try:
-            lam_val = torch.linalg.solve(A, rhs.unsqueeze(-1)).squeeze(-1)
+            lam_val_continuous = torch.linalg.solve(A, rhs.unsqueeze(-1)).squeeze(-1)
         except RuntimeError:
-            lam_val = torch.linalg.lstsq(A, rhs.unsqueeze(-1)).solution.squeeze(-1)
+            lam_val_continuous = torch.linalg.lstsq(A, rhs.unsqueeze(-1)).solution.squeeze(-1)
             
-        lambdas.append(lam_val[0].clone())
+        lambdas.append(lam_val_continuous[0].clone())
         M_np1_T = M_n_T
         
     lambdas.reverse()
@@ -204,3 +218,4 @@ def test_adjoint_gradient_correctness():
 
 if __name__ == "__main__":
     test_adjoint_gradient_correctness()
+    
