@@ -314,25 +314,32 @@ class DummyDerivativeDAE:
         yp_dynamic = Zp[..., :self.n_vars]
         u = Z[..., self.n_vars:]
         
-        # swap values in yp with algebric constants (dummy derivatives)
+        # swap values in yp with algebraic constants (dummy derivatives)
         yp_bar = yp_dynamic.clone()
         for idx, dummy_idx in enumerate(self.dummy_derivatives):
             yp_bar[..., dummy_idx] = u[..., idx]
             
-        # N original equation
+        # N original equations
         r_orig = self.F(t, y, yp_bar)
         
-        # K equation
+        # K equations
         t_tensor = torch.tensor(t, dtype=y.dtype, device=y.device, requires_grad=True)
         t_tangent = torch.ones_like(t_tensor)
         
-        _, dF_dt = func.jvp(
-            lambda t_val, y_val: self.F(t_val, y_val, yp_bar),
-            (t_tensor, y),
-            (t_tangent, yp_bar)
-        )
+        # reconstruct ypp (y'')
+        ypp = Zp[..., :self.n_vars].clone()
+        for idx, dummy_idx in enumerate(self.dummy_derivatives):
+            ypp[..., dummy_idx] = Zp[..., self.n_vars + idx]
         
-        # residuals
+        # differentiate F with respect to t, y, and yp to include dF/dyp_bar * ypp
+        with torch.enable_grad():
+            _, dF_dt = func.jvp(
+                lambda t_val, y_val, yp_val: self.F(t_val, y_val, yp_val),
+                (t_tensor, y, yp_bar),
+                (t_tangent, yp_bar, ypp)
+            )
+        
+        # residuals of differentiated constraints
         r_diff = []
         for idx in self.high_index_eqs:
             r_diff.append(dF_dt[..., idx:idx+1])
