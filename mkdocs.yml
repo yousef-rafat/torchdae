@@ -1,0 +1,4 @@
+nav:
+  - Home: index.md
+  - Usage:
+      - Getting Started: usage/getting_started.md

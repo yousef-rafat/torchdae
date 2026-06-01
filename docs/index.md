@@ -50,5 +50,5 @@ print("Solved states at t=1.0:", sol.ys[-1, 0])
 
 ## Next steps
 
-Have a look at the Getting Started page.
+Have a look at the [Getting Started](usage/getting_started.md) page.
 ```
