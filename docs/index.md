@@ -3,6 +3,7 @@
 torchdae is a PyTorch-based library providing numerical solvers for Differential-Algebraic Equations (DAEs).
 
 Features include:
+
 - **Implicit Solvers**: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.
 - **Index Reduction**: Automatic structural index lowering using Pantelides' algorithm and Mattsson-Söderlind Dummy Derivatives.
 - **Drift Correction**: Post-step coordinate projection to keep variables strictly on their physical manifolds.
@@ -48,4 +49,4 @@ print("Solved states at t=1.0:", sol.ys[-1, 0])
 
 ## Next steps
 
-Have a look at the [Getting Started](https://yousef-rafat.github.io/torchdae/usage/getting-started/) page.
+Have a look at the [Getting Started](usage/getting-started.md) page.

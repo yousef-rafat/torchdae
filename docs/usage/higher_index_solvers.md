@@ -2,7 +2,7 @@
 
 Currently, `torchdae` supports `generalized_alpha` as the native higher-order solver that doesn't require index reduction to work
 
-A lot of parameters are shared with [Index-1 Solvers](https://yousef-rafat.github.io/torchdae/usage/index_1_solvers/).
+A lot of parameters are shared with [Index-1 Solvers](index_1_solvers.md).
 
 This page will explain the special Higher Index parameters.
 
