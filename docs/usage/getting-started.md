@@ -36,7 +36,7 @@ def my_dae(t: float, y: torch.Tensor, yp: torch.Tensor) -> torch.Tensor:
 
 ## Consistent yp0 initialization
 
-In case an error in the guess outside of the allowed tolerance is detected, a warning will be logged. To initalize a yp0, you can use the `compute_consistent_initial_conditions`
+In case an the guess is outside of the allowed tolerance is detected, a warning will be logged. To initalize a yp0, you can use the `compute_consistent_initial_conditions`
 
 An example warning message:
 ```text
@@ -84,5 +84,7 @@ sol = solve_bdf2(
     h=0.01
 )
 ```
+
+Note that you have to either define the number of steps `n_steps` or the step size `h` for all of the solvers.
 
 All index-1 solvers return `DAESolution` object, it includes `ts` for timestamps, `ys` for the states of solved trajectory, `yp_final` for the final derivative, and success if worked without needing an event handling.

@@ -2,7 +2,7 @@
 
 Adjoint Sensitivity allows you to compute gradients of your loss function in continuous space.
 
-The library contains implementation specific of Adjoint Sensitivity specific for DAEs
+The library contains implementation of Adjoint Sensitivity specific for DAEs
 
 To access the API, you can use `DAEAdjointFunction.apply` or its functional wrapper `solve_dae_adjoint`
 
