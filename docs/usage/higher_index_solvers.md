@@ -35,6 +35,7 @@ The spectral radius at infinity, controlling the amount of high-frequency numeri
 ## Return Class: `MechanicalDAESolution`
 
 Class specific for high-index mechanical problems including:
+
 * `ts`: Timestamps of the solved trajectory.
 * `qs`: Position (displacement) trajectory tensor.
 * `vs`: Velocity trajectory tensor.
