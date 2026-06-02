@@ -1,6 +1,6 @@
 # Reset Functions
 
-Reset functions work in parallel with [Event functions](https://yousef-rafat.github.io/torchdae/usage/events/).
+Reset functions work in parallel with [Event functions](events.md).
 
 After the Event function handling is done, the reset function is called, usually used for resetting the simulation's values.
  
