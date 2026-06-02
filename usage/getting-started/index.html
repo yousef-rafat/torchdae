@@ -816,9 +816,11 @@
 <h1 id="getting-started">Getting Started</h1>
 <p>This page is made to help you get started with solving custom problems with <code>torchdae</code></p>
 <p><code>torchdae</code> expects the input to be an implicit function returning a residual to be optimized to zero.</p>
-<p>The solvers that are supported in the library are: 
-* <strong>First-Order DAE Solvers</strong>: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.
-* <strong>Second-Order Mechanical Solvers</strong>: Generalized-$\alpha$.</p>
+<p>The solvers that are supported in the library are: </p>
+<ul>
+<li><strong>First-Order DAE Solvers</strong>: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.</li>
+<li><strong>Second-Order Mechanical Solvers</strong>: Generalized-$\alpha$.</li>
+</ul>
 <h2 id="defining-a-function">Defining a function</h2>
 <p>Function must have all pytorch operations in the implicit form of <code>f(t, y0, yp0) = 0</code>. An index-1 example:</p>
 <pre><code class="language-python">import torch

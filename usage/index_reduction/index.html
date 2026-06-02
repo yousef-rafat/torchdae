@@ -707,10 +707,10 @@
 <h1 id="index-reduction">Index Reduction</h1>
 <p><code>torchdae</code>'s Index Reduction supports <code>differentiation</code> and <code>dummy_derivative</code> modes.</p>
 <p>To start with the Index Reduction, we run the <code>simplify_dae</code> along with the desired mode.</p>
-<p>The function will return the function wrapped in either <code>IndexReducedDAE</code> or <code>DummyDerivativeDAE</code> depending on the mode along with the the current state <code>y0</code> and its derivative <code>yp0</code>.</p>
-<p>Internally, the <code>simplify_dae</code> function runs the <code>analyze_pytorch_dae</code> function to get the <code>DAEStructure</code> that contains equations and properties of the inputted function.</p>
+<p>The function will return the function wrapped in either <code>IndexReducedDAE</code> or <code>DummyDerivativeDAE</code> depending on the mode along with the current state <code>y0</code> and its derivative <code>yp0</code>.</p>
+<p>Internally, the <code>simplify_dae</code> function runs the <code>analyze_pytorch_dae</code> function to get the <code>DAEStructure</code> that contains equations and properties of the input function.</p>
 <p>The <code>differentiation</code> takes the derivative of the equation depending on the <code>differentiation_orders</code> of the inputted equations using the Pantelides' algorithm and implements Baumgarte stabilization for higher index equations, requiring an <code>alpha</code> parameter.</p>
-<p>The <code>dummy_derivative</code> mode implements the Mattsson-Söderlind algorithim without requiring an <code>alpha</code> parameter.</p>
+<p>The <code>dummy_derivative</code> mode implements the Mattsson-Söderlind algorithm  without requiring an <code>alpha</code> parameter.</p>
 <p>An example with <code>simplify_dae</code>:</p>
 <pre><code class="language-python">import torch
 from torchdae import simplify_dae, solve_bdf1

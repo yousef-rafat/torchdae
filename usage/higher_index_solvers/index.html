@@ -973,7 +973,7 @@
 
 <h1 id="higher-index-solvers">Higher Index Solvers</h1>
 <p>Currently, <code>torchdae</code> supports <code>generalized_alpha</code> as the native higher-order solver that doesn't require index reduction to work</p>
-<p>A lot of parameters are shared with <a href="usage/index_1_solvers.md">Index-1 Solvers</a>.</p>
+<p>A lot of parameters are shared with <a href="https://yousef-rafat.github.io/torchdae/usage/index_1_solvers/">Index-1 Solvers</a>.</p>
 <p>This page will explain the special Higher Index parameters.</p>
 <h2 id="mechanical-parameters">Mechanical Parameters</h2>
 <h3 id="m-mass-matrix"><code>M</code> (Mass Matrix)</h3>
@@ -986,9 +986,11 @@
 <p>The initial acceleration $a(0)$ and initial Lagrange multiplier $\lambda(0)$ </p>
 <h2 id="stability-and-damping-parameters">Stability and Damping Parameters</h2>
 <h3 id="rho_inf-default-08"><code>rho_inf</code> (default: <code>0.8</code>)</h3>
-<p>The spectral radius at infinity, controlling the amount of high-frequency numerical damping.
-* <code>rho_inf = 1.0</code>: Zero numerical damping.
-* <code>rho_inf = 0.0</code>: Maximum numerical damping.</p>
+<p>The spectral radius at infinity, controlling the amount of high-frequency numerical damping.</p>
+<ul>
+<li><code>rho_inf = 1.0</code>: Zero numerical damping.</li>
+<li><code>rho_inf = 0.0</code>: Maximum numerical damping.</li>
+</ul>
 <hr />
 <h2 id="return-class-mechanicaldaesolution">Return Class: <code>MechanicalDAESolution</code></h2>
 <p>Class specific for high-index mechanical problems including:

@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#quick-example" class="md-skip">
+        <a href="#torchdae-in-a-nutshell" class="md-skip">
           Skip to content
         </a>
       
@@ -202,6 +202,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -244,12 +246,25 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#quick-example" class="md-nav__link">
@@ -737,12 +752,25 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#quick-example" class="md-nav__link">
@@ -783,25 +811,17 @@
 
 
 
-  <h1>Home</h1>
-
-<pre><code class="language-markdown"># torchdae in a nutshell
-
-torchdae is a PyTorch-based library providing numerical solvers for Differential-Algebraic Equations (DAEs).
-
-Features include:
-- **Implicit Solvers**: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.
-- **Index Reduction**: Automatic structural index lowering using Pantelides' algorithm and Mattsson-Söderlind Dummy Derivatives.
-- **Drift Correction**: Post-step coordinate projection to keep variables strictly on their physical manifolds.
-- **Events &amp; Resets**: Vectorized, differentiable event handling to catch boundary crossings and apply discontinuous state resets.
-- **Constant Memory Backpropagation**: Continuous adjoint sensitivity to train Neural DAEs without running out of GPU memory.
-- **Batch Parallelism**: Full support for PyTorch `vmap` and `torch.compile` to integrate directly with deep learning pipelines.
-
-
-## Installation
-
-```bash
-pip install torchdae
+<h1 id="torchdae-in-a-nutshell">torchdae in a nutshell</h1>
+<p>torchdae is a PyTorch-based library providing numerical solvers for Differential-Algebraic Equations (DAEs).</p>
+<p>Features include:
+- <strong>Implicit Solvers</strong>: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.
+- <strong>Index Reduction</strong>: Automatic structural index lowering using Pantelides' algorithm and Mattsson-Söderlind Dummy Derivatives.
+- <strong>Drift Correction</strong>: Post-step coordinate projection to keep variables strictly on their physical manifolds.
+- <strong>Events &amp; Resets</strong>: Vectorized, differentiable event handling to catch boundary crossings and apply discontinuous state resets.
+- <strong>Constant Memory Backpropagation</strong>: Continuous adjoint sensitivity to train Neural DAEs without running out of GPU memory.
+- <strong>Batch Parallelism</strong>: Full support for PyTorch <code>vmap</code> and <code>torch.compile</code> to integrate directly with deep learning pipelines.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="language-bash">pip install torchdae
 </code></pre>
 <p>Requires Python 3.8+.</p>
 <h2 id="quick-example">Quick example</h2>
@@ -828,8 +848,7 @@ sol = solve_bdf2(physics, t_span=(0.0, 1.0), y0=y0, h=0.01)
 print(&quot;Solved states at t=1.0:&quot;, sol.ys[-1, 0])
 </code></pre>
 <h2 id="next-steps">Next steps</h2>
-<p>Have a look at the <a href="usage/getting_started.md">Getting Started</a> page.
-```</p>
+<p>Have a look at the <a href="https://yousef-rafat.github.io/torchdae/usage/getting-started/">Getting Started</a> page.</p>
 
 
 

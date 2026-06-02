@@ -773,11 +773,13 @@
 
 <h1 id="events">Events</h1>
 <p>In <code>torchdae</code>, an event is the case where the defined constrains are violated per timestep update</p>
-<p>Events are logged in the <code>DAESolution</code> return class. It contains: 
-* <code>event_triggered</code>: a boolean if any event was triggered in the simulation,
-* <code>event_mask</code>: a mask of which batched elements triggered the event,
-* <code>t_event</code>: exact time events, and
-* <code>y_event</code>: exact states of the events</p>
+<p>Events are logged in the <code>DAESolution</code> return class. It contains: </p>
+<ul>
+<li><code>event_triggered</code>: a boolean if any event was triggered in the simulation,</li>
+<li><code>event_mask</code>: a mask of which batched elements triggered the event,</li>
+<li><code>t_event</code>: exact time events, and</li>
+<li><code>y_event</code>: exact states of the events</li>
+</ul>
 <p>The events are handled using bisection for finding the exact timestep of where the constrain was violated and, using hermite interpolation, it corrects the issue</p>
 <h2 id="the-event-function-event_fn">The event function (<code>event_fn</code>)</h2>
 <p>To define an event, you must define an <code>event_fn</code>. An <code>event_fn</code> takes the timestep and the state of the time as first and second inputs respectivly</p>
