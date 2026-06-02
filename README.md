@@ -24,7 +24,7 @@ pip install torchdae
 Requires Python 3.8+ and PyTorch 2.0+.
 
 ## Documentation
-Available at [https://example.com](https://example.com).
+Available at [https://yousef-rafat.github.io/torchdae/](https://yousef-rafat.github.io/torchdae/).
 
 ## Quick Example 
 A simple example of how to solve an Index-1 DAE with BDF2.
