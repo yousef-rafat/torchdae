@@ -20,8 +20,8 @@ Features include:
 
 ```bash
 pip install torchdae
-Requires Python 3.8+ and PyTorch 2.0+.
 ```
+Requires Python 3.8+ and PyTorch 2.0+.
 
 ## Documentation
 Available at [https://example.com](https://example.com).
