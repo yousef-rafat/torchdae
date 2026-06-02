@@ -1,7 +1,7 @@
 ```markdown
-# TorchDAE in a nutshell
+# torchdae in a nutshell
 
-TorchDAE is a PyTorch-based library providing numerical solvers for Differential-Algebraic Equations (DAEs).
+torchdae is a PyTorch-based library providing numerical solvers for Differential-Algebraic Equations (DAEs).
 
 Features include:
 - **Implicit Solvers**: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.
@@ -11,7 +11,6 @@ Features include:
 - **Constant Memory Backpropagation**: Continuous adjoint sensitivity to train Neural DAEs without running out of GPU memory.
 - **Batch Parallelism**: Full support for PyTorch `vmap` and `torch.compile` to integrate directly with deep learning pipelines.
 
-From a technical point of view, the library is written entirely in PyTorch using functional transforms (`vmap`, `jacrev`, `jvp`). This means you can embed any PyTorch neural network directly inside your DAEs and backpropagate through the entire solver with zero language-bridging overhead.
 
 ## Installation
 
@@ -27,7 +26,7 @@ Here is a simple example showing how to solve an Index-1 DAE:
 
 ```python
 import torch
-from torchdae.bdf import solve_bdf2
+from torchdae import solve_bdf2
 
 # Define a simple Index-1 DAE: F(t, y, yp) = 0
 def physics(t, y, yp):
