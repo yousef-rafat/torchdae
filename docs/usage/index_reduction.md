@@ -4,13 +4,13 @@
 
 To start with the Index Reduction, we run the `simplify_dae` along with the desired mode.
 
-The function will return the function wrapped in either `IndexReducedDAE` or `DummyDerivativeDAE` depending on the mode along with the the current state `y0` and its derivative `yp0`.
+The function will return the function wrapped in either `IndexReducedDAE` or `DummyDerivativeDAE` depending on the mode along with the current state `y0` and its derivative `yp0`.
 
-Internally, the `simplify_dae` function runs the `analyze_pytorch_dae` function to get the `DAEStructure` that contains equations and properties of the inputted function.
+Internally, the `simplify_dae` function runs the `analyze_pytorch_dae` function to get the `DAEStructure` that contains equations and properties of the input function.
 
 The `differentiation` takes the derivative of the equation depending on the `differentiation_orders` of the inputted equations using the Pantelides' algorithm and implements Baumgarte stabilization for higher index equations, requiring an `alpha` parameter.
 
-The `dummy_derivative` mode implements the Mattsson-Söderlind algorithim without requiring an `alpha` parameter.
+The `dummy_derivative` mode implements the Mattsson-Söderlind algorithm  without requiring an `alpha` parameter.
 
 
 An example with `simplify_dae`:

@@ -1,6 +1,7 @@
 # Index-1 Solvers
 
 Index-1 in `torchdae`:
+
 * **BDF1 (Backward Euler)**: First-order, highly dissipative and stable.
 * **BDF2**: Second-order, general-purpose solver.
 * **TR-BDF2**: One-step composite solver mixing the Trapezoidal Rule and BDF2.
@@ -8,7 +9,7 @@ Index-1 in `torchdae`:
 
 This page contain explanation for the input parameters for all of these solvers.
 
-> A lot of these of parameters are shared with the [Higher Index Solvers](usage/higher_index_solvers.md)
+> A lot of these of parameters are shared with the [Higher Index Solvers](https://yousef-rafat.github.io/torchdae/usage/higher_index_solvers/)
 
 ## Input Parameters
 

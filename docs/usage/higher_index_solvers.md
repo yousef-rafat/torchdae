@@ -2,7 +2,7 @@
 
 Currently, `torchdae` supports `generalized_alpha` as the native higher-order solver that doesn't require index reduction to work
 
-A lot of parameters are shared with [Index-1 Solvers](usage/index_1_solvers.md).
+A lot of parameters are shared with [Index-1 Solvers](https://yousef-rafat.github.io/torchdae/usage/index_1_solvers/).
 
 This page will explain the special Higher Index parameters.
 
@@ -26,6 +26,7 @@ The initial acceleration $a(0)$ and initial Lagrange multiplier $\lambda(0)$
 
 ### `rho_inf` (default: `0.8`)
 The spectral radius at infinity, controlling the amount of high-frequency numerical damping.
+
 * `rho_inf = 1.0`: Zero numerical damping.
 * `rho_inf = 0.0`: Maximum numerical damping.
 

@@ -3,6 +3,7 @@
 In `torchdae`, an event is the case where the defined constrains are violated per timestep update
 
 Events are logged in the `DAESolution` return class. It contains: 
+
 * `event_triggered`: a boolean if any event was triggered in the simulation,
 * `event_mask`: a mask of which batched elements triggered the event,
 * `t_event`: exact time events, and

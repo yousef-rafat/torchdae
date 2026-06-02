@@ -5,6 +5,7 @@ This page is made to help you get started with solving custom problems with `tor
 `torchdae` expects the input to be an implicit function returning a residual to be optimized to zero.
 
 The solvers that are supported in the library are: 
+
 * **First-Order DAE Solvers**: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.
 * **Second-Order Mechanical Solvers**: Generalized-$\alpha$.
 

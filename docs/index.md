@@ -1,4 +1,3 @@
-```markdown
 # torchdae in a nutshell
 
 torchdae is a PyTorch-based library providing numerical solvers for Differential-Algebraic Equations (DAEs).
@@ -49,5 +48,4 @@ print("Solved states at t=1.0:", sol.ys[-1, 0])
 
 ## Next steps
 
-Have a look at the [Getting Started](usage/getting_started.md) page.
-```
+Have a look at the [Getting Started](https://yousef-rafat.github.io/torchdae/usage/getting-started/) page.
