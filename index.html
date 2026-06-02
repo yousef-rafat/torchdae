@@ -813,13 +813,15 @@
 
 <h1 id="torchdae-in-a-nutshell">torchdae in a nutshell</h1>
 <p>torchdae is a PyTorch-based library providing numerical solvers for Differential-Algebraic Equations (DAEs).</p>
-<p>Features include:
-- <strong>Implicit Solvers</strong>: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.
-- <strong>Index Reduction</strong>: Automatic structural index lowering using Pantelides' algorithm and Mattsson-Söderlind Dummy Derivatives.
-- <strong>Drift Correction</strong>: Post-step coordinate projection to keep variables strictly on their physical manifolds.
-- <strong>Events &amp; Resets</strong>: Vectorized, differentiable event handling to catch boundary crossings and apply discontinuous state resets.
-- <strong>Constant Memory Backpropagation</strong>: Continuous adjoint sensitivity to train Neural DAEs without running out of GPU memory.
-- <strong>Batch Parallelism</strong>: Full support for PyTorch <code>vmap</code> and <code>torch.compile</code> to integrate directly with deep learning pipelines.</p>
+<p>Features include:</p>
+<ul>
+<li><strong>Implicit Solvers</strong>: BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA.</li>
+<li><strong>Index Reduction</strong>: Automatic structural index lowering using Pantelides' algorithm and Mattsson-Söderlind Dummy Derivatives.</li>
+<li><strong>Drift Correction</strong>: Post-step coordinate projection to keep variables strictly on their physical manifolds.</li>
+<li><strong>Events &amp; Resets</strong>: Vectorized, differentiable event handling to catch boundary crossings and apply discontinuous state resets.</li>
+<li><strong>Constant Memory Backpropagation</strong>: Continuous adjoint sensitivity to train Neural DAEs without running out of GPU memory.</li>
+<li><strong>Batch Parallelism</strong>: Full support for PyTorch <code>vmap</code> and <code>torch.compile</code> to integrate directly with deep learning pipelines.</li>
+</ul>
 <h2 id="installation">Installation</h2>
 <pre><code class="language-bash">pip install torchdae
 </code></pre>
@@ -848,7 +850,7 @@ sol = solve_bdf2(physics, t_span=(0.0, 1.0), y0=y0, h=0.01)
 print(&quot;Solved states at t=1.0:&quot;, sol.ys[-1, 0])
 </code></pre>
 <h2 id="next-steps">Next steps</h2>
-<p>Have a look at the <a href="https://yousef-rafat.github.io/torchdae/usage/getting-started/">Getting Started</a> page.</p>
+<p>Have a look at the <a href="usage/getting-started/">Getting Started</a> page.</p>
 
 
 
