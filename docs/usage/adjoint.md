@@ -10,8 +10,7 @@ A coding example:
 
 ```python
 import torch
-from torchdae import solve_dae_adjoint
-from torchdae import solve_bdf1
+from torchdae import solve_dae_adjoint, solve_bdf1
 
 # parameters that require grad
 p = torch.tensor([1.5, 1.0], requires_grad=True)

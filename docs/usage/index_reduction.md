@@ -17,8 +17,7 @@ An example with `simplify_dae`:
 
 ```python
 import torch
-from torchdae import simplify_dae
-from torchdae import solve_bdf1
+from torchdae import simplify_dae, solve_bdf1
 
 # Index-3 pendulum system
 # (Positions x, y constraint: x^2 + y^2 = L^2)

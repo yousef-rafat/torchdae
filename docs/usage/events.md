@@ -19,8 +19,7 @@ To define an `event_fn`, you will add it in the `DAEFunctions`:
 
 ```
 import torch
-from torchdae import DAEFunctions
-from torchdae import solve_bdf2
+from torchdae import DAEFunctions, solve_bdf2
 
 def physics(t, y, yp):
     ...
