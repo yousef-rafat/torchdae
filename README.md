@@ -9,12 +9,12 @@ TorchDAE is a [PyTorch](https://github.com/pytorch/pytorch)-based library provid
 
 Features include:
 
-- **Implicit Solvers**: Multiple stiff solvers (including BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA) [2];
+- **Implicit Solvers**: Multiple stiff solvers (including BDF1, BDF2, SDIRK TR-BDF2, and 5th-order Radau IIA);
 - **Automatic Index Reduction**: lowering high-index DAEs to Index-1 using Pantelides' algorithm and Mattsson-Söderlind Dummy Derivatives;
 - **Manifold Stabilization**: Coordinate Projection Method (CPM) and Baumgarte feedback to eliminate numerical constraint drift;
 - **Events & Resets**: Vectorized, differentiable event handling with continuous-time Hermite state interpolation and resets;
 - **Adjoint Methods**: Continuous adjoint sensitivity backward-in-time for constant-memory backpropagation;
-- **Vmappable everything**: Full support for PyTorch `vmap` and `torch.compile` on GPU and CPU pipelines.
+- **Vmap support**: Full support for PyTorch `vmap` and batched input on GPU and CPU pipelines.
 
 ## Installation
 
