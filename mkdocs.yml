@@ -1,4 +1,20 @@
+site_name: torchdae
+site_description: A PyTorch-based library for Differential-Algebraic Equations
+
+theme:
+  name: material
+
 nav:
   - Home: index.md
-  - Usage:
-      - Getting Started: usage/getting_started.md
+  - Getting Started: usage/getting-started.md
+  - Solvers:
+      - Index-1 Solvers: usage/index_1_solvers.md
+      - Higher Index Solvers: usage/higher_index_solvers.md
+  - Manifold Stabilization:
+      - Index Reduction: usage/index_reduction.md
+      - Coordinate Projection: usage/projection.md
+  - Hybrid Systems:
+      - Event Detection: usage/events.md
+      - State Resets: usage/reset.md
+  - Optimization:
+      - Adjoint Sensitivity: usage/adjoint.md
